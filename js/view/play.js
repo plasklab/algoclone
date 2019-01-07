@@ -8,8 +8,6 @@ var Play = enchant.Class.create(enchant.Sprite, {
     this.register_play(stage);
     // 実行中のブロックの管理
     this.play_progs = [];
-    // ハイライトのブロックを管理
-    this.highlight_block = [];
   },
 
   play: function(stage) {
@@ -57,25 +55,13 @@ var Play = enchant.Class.create(enchant.Sprite, {
       total_ip += frame.ip;
       frame_i--;
       frame = state.get_index_frame(frame_i);
-      if (stage.arg_play.length != 0) {
-        while (frame.type != "func_frame") {
-          frame_i--;
-          frame = state.get_index_frame(frame_i);
-        }
-        frame_i--;
-        frame = state.get_index_frame(frame_i);
-      }
     }
     total_ip += frame.ip;
-    var play_index = this.play_progs.length - 1;
-    if (stage.arg_play.length != 0) {
-      play_index--;
-    }
-    var head = this.play_progs[play_index];
+    var head = this.play_progs[this.play_progs.length - 1];
     var i = 0;
     while (i < total_ip) {
       head = head.next;
-      if (head != null && head.type != "arg_start" && head.type != "arg_end") {
+      if (head.type != "arg_start" && head.type != "arg_end") {
         i++;
       }
     }
@@ -84,89 +70,37 @@ var Play = enchant.Class.create(enchant.Sprite, {
     }
   },
 
-  highlight: function(frame, state) {
-    if (this.highlight_block.length != 0) {
-      var b = this.highlight_block.pop();
-      if (b.type == "func_id") {
-        this.highlight_block.push(b);
-      } else {
-        b.backgroundColor = "silver";
-      }
+  highlight: function(state) {
+    var frame_i = state.stack_frame.length - 1;
+    var frame = state.get_index_frame(frame_i);
+    var total_ip = 0;
+    var loop_flag = false;
+    while (frame.type == "loop_frame") {
+      loop_flag = true;
+      total_ip += frame.ip;
+      frame_i--;
+      frame = state.get_index_frame(frame_i);
     }
-    var name = frame.type;
-    var index = this.play_progs.length - 1;
+    total_ip += frame.ip;
+    var head = this.play_progs[this.play_progs.length - 1];
     var i = 0;
-    var ip = 0;
-    if (stage.arg_play.length != 0 && frame.type == "func_frame") {
-      for (var i = state.stack_frame.length - 1; i >= 0; i--) {
-        var f = state.stack_frame[i];
-        if (f.type == "main_frame") {
-          index--;
-          ip += f.ip;
-          break;
-        } else if (stage.arg_play.length == 0 && f.type == "func_frame") {
-          index--;
-          ip += f.ip;
-          break;
-        } else if (f.type == "loop_frame") {
-          ip += f.ip;
+    while (i < total_ip) {
+      head = head.next;
+      if (!loop_flag) {
+        if (head.type == "loop_start") {
+          head = this.get_loop_end_next(head);
         }
       }
-      ip += frame.args_ip;
-    } else if (frame.type == "loop_frame") {
-      ip = frame.ip - 1;
-    } else {
-      ip = frame.ip;
-    }
-    var block = this.play_progs[index];
-    var arg_flag = 0;
-    while (i <= ip) {
-      block = block.next;
-      i++;
-      if (stage.arg_play.length != 0) {
-        var arg_id = stage.arg_play.pop();
-        if (block.type == "arg_start") {
-          if (block.id != arg_id) {
-            block = block.next;
-            while (block.type != "arg_end") {
-              block = block.next;
-            }
-            i--;
-          } else {
-            block = block.next;
-          }
-        } else if (block.type == "arg_end") {
-          block = block.next;
-        }
-        if (block == null) {
-          console.log("error : ブロックが存在しない " + this.play_progs[index]);
-          stage.arg_play.push(arg_id);
-          return;
-        }
-        stage.arg_play.push(arg_id);
-      } else {
-        if (block.type == "func_id" && i == ip) {
-          arg_flag = block.arg_type.length;
-          while (arg_flag != 0) {
-            block = block.next;
-            if (block.type == "arg_end") {
-              arg_flag--;
-            }
-          }
-        }
+      if (head.type != "arg_start" && head.type != "arg_end") {
+        i++;
       }
     }
-    console.log("hightlight : " + block.type);
-    block.backgroundColor = "yellow";
-    this.highlight_block.push(block);
-  },
-
-  end_func: function() {
-    var b = this.highlight_block.pop();
-    b.backgroundColor = "silver";
-    while (b.type != "func_id") {
-      b = this.highlight_block.pop();
-      b.backgroundColor = "silver";
+    if (total_ip != 0) {
+      head.backgroundColor = "silver";
+    }
+    head = head.next;
+    if (head != null) {
+      head.backgroundColor = "yellow";
     }
   },
 

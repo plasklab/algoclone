@@ -191,25 +191,29 @@ var Prog = enchant.Class.create({
       if (head.type == "arg_start") {
         y -= 5;
       }
-      c_node.append(head.copy_block(stage, x, y));
-      c_node = c_node.next;
-      if (c_node.type == "loop_start") {
-        loop_nest.push(c_node);
-      } else if (c_node.type == "loop_end") {
-        var start = loop_nest.pop();
-        start.loop.height = y - start.loop.y;
-      } else if (c_node.type == "func_id") {
-        func.push(c_node.arg_type.length);
-      } else if (c_node.type == "arg_start") {
-        arg.push(c_node.arg);
-      } else if (c_node.type == "arg_end") {
-        var start_arg = arg.pop();
-        c_node.set_backgroundColor(start_arg.id);
-        start_arg.height = y - start_arg.y;
-        var length = func.pop();
-        length--;
-        if (length != 0) {
-          func.push(length);
+      if (head.type == "param") {
+        y = this.copy_param(head, c_node, args, x, y);
+      } else {
+        c_node.append(head.copy_block(stage, x, y));
+        c_node = c_node.next;
+        if (c_node.type == "loop_start") {
+          loop_nest.push(c_node);
+        } else if (c_node.type == "loop_end") {
+          var start = loop_nest.pop();
+          start.loop.height = y - start.loop.y;
+        } else if (c_node.type == "func_id") {
+          func.push(c_node.arg_type.length);
+        } else if (c_node.type == "arg_start") {
+          arg.push(c_node.arg);
+        } else if (c_node.type == "arg_end") {
+          var start_arg = arg.pop();
+          c_node.set_backgroundColor(start_arg.id);
+          start_arg.height = y - start_arg.y;
+          var length = func.pop();
+          length--;
+          if (length != 0) {
+            func.push(length);
+          }
         }
       }
       head = head.next;
@@ -233,24 +237,6 @@ var Prog = enchant.Class.create({
       stage.removeChild(head);
       head = head.next;
     }
-  },
-
-  find_loop_start: function(frame) {
-    var play = stage.play;
-    var i = 0;
-    var index = play.play_progs.length - 1;
-    if (stage.arg_play.length != 0) {
-      index--;
-    }
-    var b = play.play_progs[index];
-    while (i < frame.ip) {
-      b = b.next;
-      i++;
-    }
-    while (b.type != "loop_start") {
-      b = b.next;
-    }
-    return b;
   },
 
   is_x_main_head_inside: function(x) {
