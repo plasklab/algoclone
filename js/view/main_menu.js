@@ -1,18 +1,35 @@
 var MainMenu = enchant.Class.create(enchant.Scene, {
   initialize: function() {
     enchant.Scene.call(this);
-    console.log("TEST MainMenu");
+    
+    var stageId = undefined;
 
-    this.btnSelectGameMode = new Button("env");
-
-    this.btnSelectGameMode.moveTo(10, 90);
-    this.btnSelectGameMode.addEventListener("touchstart", function(e) {
-      // 0 <= stage_id <= 12
-      var stage_id = 3;
-      stage = new Stage(stage_id);
+    this.btnStart = new Button("Start");
+    this.btnStart.moveTo(40, 300);
+    this.btnStart.addEventListener("touchstart", function(e) {
+      if (stageId == undefined) return;
+      console.log("stageId="+stageId);
+      stage = new Stage(stageId);
       game.pushScene(stage);
       stage.display();
     });
-    this.addChild(this.btnSelectGameMode);
+    this.addChild(this.btnStart);
+
+
+    // Select stage buttons
+    var NUM_OF_STAGES = 13;
+    this.btnListStageSelect = [];
+    for (var i = 0; i < NUM_OF_STAGES; i++) {
+      var row = Math.floor(i / 6);
+      var col = i % 6;
+      var btn = new Button("Stage "+i);
+      btn.stageId = i;
+      btn.moveTo(80+(col*90), 90+(row*80));
+      btn.addEventListener("touchstart", function(e) {
+        stageId = this.stageId;
+      });
+      this.btnListStageSelect.push(btn);
+      this.addChild(btn);
+    }
   },
 });
