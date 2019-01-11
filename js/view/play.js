@@ -22,7 +22,21 @@ var Play = enchant.Class.create(enchant.Sprite, {
     fm.set_heart(func_parser(prog.h_head, "heart"));
     fm.set_dia(func_parser(prog.d_head, "dia"));
     fm.set_clover(func_parser(prog.c_head, "clover"));
-    run(main, new State(stage.player), fm);
+
+    stage.control_panel.disableChangingModeButton();
+
+    run(main, new State(stage.player), fm, function(exit_status) {
+      console.log("finish, "+exit_status);
+      stage.control_panel.enableChangingModeButton(function() {
+        var stageId = stage.map_id;
+        
+        game.popScene();
+        game.height = HEIGHT;
+        stage = new Stage(stageId);
+        game.pushScene(stage);
+        stage.display();
+      });
+    });
   },
 
   register_play: function(stage) {
@@ -32,7 +46,8 @@ var Play = enchant.Class.create(enchant.Sprite, {
       }
       stage.play_flag = true;
       stage.remove();
-      stage.prog.move_blocks(stage.map.x + stage.map.width + 20);
+      //stage.prog.move_blocks(stage.map.x + stage.map.width + 20);
+      stage.prog.running_mode();
       game.height += stage.prog.get_total_height();
       console.log("=============== play ===============");
       this.play(stage);

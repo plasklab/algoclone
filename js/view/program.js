@@ -1,7 +1,10 @@
 var Prog = enchant.Class.create({
-  initialize: function(x) {
+  initialize: function(x, y) {
+    this.program_base_pos_editing_mode = { x: x, y: y };
+    this.program_base_pos_running_mode = { x: x-20, y: 500 };
+
     this.main_head = new Terminal_symbol("head");
-    this.set_head(this.main_head, x, 10);
+    this.set_head(this.main_head, x, y);
     this.main_space = this.create_space(this.main_head, this.main_head.width + 10, 450 - (this.main_head.y + this.main_head.height), "dimgray");
     this.s_head = new Terminal_symbol("head");
     this.s_head.image = game.assets[SPEAD];
@@ -19,6 +22,14 @@ var Prog = enchant.Class.create({
     this.c_head.image = game.assets[CLOVER];
     this.set_head(this.c_head, this.d_space.x + this.d_space.width + 10, 10);
     this.c_space = this.create_space(this.c_head, this.c_head.width + 10, 450 - (this.c_head.y + this.c_head.height), "skyblue");
+  },
+
+  editing_mode: function() {
+    this.move_blocks(this.program_base_pos_editing_mode.x, this.program_base_pos_editing_mode.y);
+  },
+
+  running_mode: function() {
+    this.move_blocks(this.program_base_pos_running_mode.x, this.program_base_pos_running_mode.y);
   },
 
   set_head: function(head, x, y) {
@@ -60,17 +71,18 @@ var Prog = enchant.Class.create({
     return space;
   },
 
-  move_blocks: function(x) {
-    this.move_block(x, this.main_head, this.main_space);
-    this.move_block(this.main_space.x + this.main_space.width + 10, this.s_head, this.s_space);
-    this.move_block(this.s_space.x + this.s_space.width + 10, this.h_head, this.h_space);
-    this.move_block(this.h_space.x + this.h_space.width + 10, this.d_head, this.d_space);
-    this.move_block(this.d_space.x + this.d_space.width + 10, this.c_head, this.c_space);
+  move_blocks: function(x, y) {
+    this.move_block(x, y, this.main_head, this.main_space);
+    this.move_block(this.main_space.x + this.main_space.width + 10, y, this.s_head, this.s_space);
+    this.move_block(this.s_space.x + this.s_space.width + 10, y, this.h_head, this.h_space);
+    this.move_block(this.h_space.x + this.h_space.width + 10, y, this.d_head, this.d_space);
+    this.move_block(this.d_space.x + this.d_space.width + 10, y, this.c_head, this.c_space);
   },
 
-  move_block: function(x, head, space) {
+  move_block: function(x, y, head, space) {
     head.x = x;
-    head.y = space.y + space.height + 10;
+    head.y = y;
+    //head.y = space.y + space.height + 10;
     space.x = x - 5
     space.y = head.y + head.height;
     head.move(head);

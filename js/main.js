@@ -1,6 +1,6 @@
 enchant();
 const WIDTH = 700;
-const HIGHT = 460;
+const HEIGHT = 460;
 /* 画像ファイルのパス */
 const PLAYER  = "../img/chara5.png";
 const MAP     = "../img/map0.gif";
@@ -17,7 +17,7 @@ const CLOVER  = "../img/clover.png";
 const PLAY    = "../img/play.png";
 
 window.onload = function() {
-  game = new Core(WIDTH, HIGHT);
+  game = new Core(WIDTH, HEIGHT);
   game.fps = 60;
   game.preload(PLAYER, MAP, GOAL, ADVANCE, RIGHT, LEFT, LSTART, LEND,
     SPEAD, HEART, DIA, CLOVER, PLAY);

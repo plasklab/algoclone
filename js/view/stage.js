@@ -1,18 +1,27 @@
 var Stage = enchant.Class.create(enchant.Scene, {
   initialize: function(id) {
     enchant.Scene.call(this);
+    this.backgroundColor = "white";
+    this.map_id = id;
+    this.reset();
+  },
+
+  reset: function() {
+    var id = this.map_id;
     this.map = this.set_map(id);
     this.player = new Player(this.map.init_x, this.map.init_y, this.map.init_direction);
     this.goal = new Goal(this.map.goal_x, this.map.goal_y);
     this.blocks = this.set_blocks();
     this.play = new Play(this.blocks[this.blocks.length - 1].x, this.set_y(this.blocks[this.blocks.length - 1]), this);
-    this.prog = new Prog(this.blocks[0].x + this.blocks[0].height + 20);
+    this.prog = new Prog(this.blocks[0].x + this.blocks[0].height + 20, 10);
     // is_touch : ブロックを作れるタイミングを管理
     this.is_touch = true;
     // play_flag : プログラムを実行しているか管理
     this.play_flag = false;
     // arg_play : どの引数ブロックが実行中かを判断
     this.arg_play = [];
+    
+    this.control_panel = new ControlPanel(this);
   },
 
   set_map: function(id) {
