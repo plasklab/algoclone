@@ -9,9 +9,9 @@ var MainMenu = enchant.Class.create(enchant.Scene, {
     this.btnStart.addEventListener("touchstart", function(e) {
       if (stageId == undefined) return;
       console.log("stageId="+stageId);
-      stage = new Stage(stageId);
-      game.pushScene(stage);
-      stage.display();
+      editScene = new EditScene(stageId);
+      game.pushScene(editScene);
+//	editScene.display();
     });
     this.addChild(this.btnStart);
 
