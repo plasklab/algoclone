@@ -54,9 +54,39 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 				 map.init_direction));
 	this.addChild(new Goal(map.goal_x, map.goal_y));
 	
-	/* palette */
-	var x = map.x + map.width + 10;
-	new PaletteBlock(this, x, 10, ADVANCE);
+    /* palette */
+    var xOffset = map.x + map.width + 10;
+    var yOffset = 10;
+    var BLANK = "blank"; // 配置を調整するための空き領域を表す
+    var paletteArray = [ADVANCE, BLANK, RIGHT, LEFT, BSTART, BEND, S_SPEAD, S_HEART, S_DIA, S_CLOVER, SPEAD, HEART, DIA, CLOVER];
+
+    var paletteWidth = 76; /* img_size 32 * 2 + margin 4 * 3(left,center,right) */
+    var paletteHeight = Math.floor(paletteArray.length / 2) * 36 + 4;
+    var paletteBackground = new (enchant.Class.create(enchant.Sprite, {
+        initialize: function(x, y, width, height){
+            enchant.Sprite.call(this, width,height);
+            this.x = x;
+            this.y = y;
+            var surface = new Surface(width, height);
+            surface.context.fillStyle = "lightgray";
+            surface.context.fillRect(0, 0, width, height);
+            this.image = surface;
+        }
+    }))(xOffset - 4, yOffset - 4, paletteWidth, paletteHeight);
+    this.addChild(paletteBackground);
+
+    // paletteArrayの中身に従ってblockを配置
+    for (var index = 0; index < paletteArray.length; index++) {
+        /* 配置を調整するためのblankはなにも描画しない */
+        if (paletteArray[index] == BLANK) continue;
+        /* 横2列に1,2,\n 3,4,\n 5,6,...と配置する */
+        var y = Math.floor(index / 2) * 36;
+        var x = index % 2 == 0 ? 0:36;
+        new PaletteBlock(this, x + xOffset, y + yOffset, paletteArray[index]);
+    }
+
+    /* editor zone */
+
 
 	/* play button */
 	var playButton = new (enchant.Class.create(enchant.Sprite, {
