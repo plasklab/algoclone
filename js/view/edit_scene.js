@@ -199,21 +199,22 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 		this.y = map.y + map.height + 10;
 		this.editScene = editScene;
 		this.addEventListener("touchstart", function() {
-		    var prog = new Program();
-		    var body = [
-			new TokenForward(),
-			new TokenRight(),
-			new TokenFuncall("hart"),
-			new TokenLoop(3),
-			new TokenBlockEnd(),
-			new TokenBlockEnd(),
-			new TokenParam(),
-			new TokenBlank(),
-			new TokenBlockEnd(),
-			new TokenLoop(3)
-		    ];
-		    if (prog.add("main", body) == false)
-			alert("invalid program");
+		    // var prog = new Program();
+		    // var body = [
+			// new TokenForward(),
+			// new TokenRight(),
+			// new TokenFuncall("hart"),
+			// new TokenLoop(3),
+			// new TokenBlockEnd(),
+			// new TokenBlockEnd(),
+			// new TokenParam(),
+			// new TokenBlank(),
+			// new TokenBlockEnd(),
+			// new TokenLoop(3)
+		    // ];
+		    // if (prog.add("main", body) == false)
+            // alert("invalid program");
+            var prog = this.editScene.getProgram();
 		    game.pushScene(new PlayScene(id, prog));
 		});
 	    },
@@ -299,10 +300,14 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     getProgram: function() {
         var program = new Program();
         console.log(PROGRAM_MAIN);
-        program.add(PROGRAM_MAIN, this.getBody(mainProgramArray));
+        if(!program.add(PROGRAM_MAIN, this.getBody(this.mainProgramArray))) {
+            alert("invalid program");
+        };
         for (var i = 0; i < FUNC_NAME.length; i++) {
             console.log(FUNC_NAME[i]);
-            program.add(FUNC_NAME[i], this.getBody(funcProgramArray[i]));
+            if (!program.add(FUNC_NAME[i], this.getBody(this.funcProgramArray[i]))) {
+                alert("invalid program");
+            }
         }
 	    return program;
     },
