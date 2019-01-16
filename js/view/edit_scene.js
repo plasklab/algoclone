@@ -1,3 +1,5 @@
+const PROGRAM_MAIN = "main";
+const FUNC_NAME = ["spead", "heart", "dia", "clover"];
 var PaletteBlock = enchant.Class.create(enchant.Sprite, {
     initialize: function(scene, x, y, imgsrc) {
 	enchant.Sprite.call(this, 32, 32);
@@ -80,7 +82,7 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
         this.imgsrc = imgsrc;
         this.scene.addChild(this);
     },
-    getToken: function() {
+    getBlockName: function() {
         return this.imgsrc;
     },
     getCount: function() {
@@ -231,15 +233,64 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         return false;
     },
 
+    /* block -> EditorBlock */
+    /* blockName = [ADVANCE, BLANK, RIGHT, LEFT, BSTART, BEND, S_SPEAD, S_HEART, S_DIA, S_CLOVER, ARG] */
+    tokenize: function(block) {
+        console.log(block.getBlockName());
+        switch(block.getBlockName()) {
+            case ADVANCE:
+                return new TokenForward();
+                break;
+            case BLANK:
+                return new TokenBlank();
+                break;
+            case RIGHT:
+                return new TokenRight();
+                break;
+            case LEFT:
+                return new TokenLeft();
+                break;
+            case BSTART:
+                return new TokenLoop(block.getCount());
+                break;
+            case BEND:
+                return new TokenBlockEnd();
+                break;
+            case S_SPEAD:
+                return new TokenFuncall("spead");
+                break;
+            case S_HEART:
+                return new TokenFuncall("heart");
+                break;
+            case S_DIA:
+                return new TokenFuncall("dia");
+                break;
+            case S_CLOVER:
+                return new TokenFuncall("clover");
+                break;
+            case ARG:
+                return new TokenParam();
+                break;
+        }
+    },
+
+    getBody: function(blockArray) {
+        var tokenArray = new Array(blockArray.length);
+        for (var i = 0; i < blockArray.length; i++) {
+            tokenArray[i] = this.tokenize(blockArray[i]);
+        }
+        return tokenArray;
+    },
+
     getProgram: function() {
-	var program = [
-	    new BlockTokenForward(),
-	    new BlockTokenLoopBegin(9),
-	    new BlockTokenLeft(),
-	    new BlockTokenLoopEnd()
-	];
-	    
-	return program;
+        var program = new Program();
+        console.log(PROGRAM_MAIN);
+        program.add(PROGRAM_MAIN, this.getBody(mainProgramArray));
+        for (var i = 0; i < FUNC_NAME.length; i++) {
+            console.log(FUNC_NAME[i]);
+            program.add(FUNC_NAME[i], this.getBody(funcProgramArray[i]));
+        }
+	    return program;
     },
 
   reset: function(id) {
