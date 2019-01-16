@@ -1,30 +1,43 @@
+const BLANK_TOKEN = "b";
+const FORWORD_TOKEN = "f";
+const LEFT_TOKEN = "l";
+const RIGHT_TOKEN = "r";
+const LOOP_TOKEN = "L";
+const FUNCALL_TOKEN = "F";
+
 var BlockToken = enchant.Class.create({
     initialize: function(type) {
 	this.type = type;
     }
 });
 
+var BlockTokenBlank = enchant.Class.create(BlockToken, {
+    initialize: function() {
+        BlockToken.call(this, BLANK_TOKEN);
+    }
+})
+
 var BlockTokenForward = enchant.Class.create(BlockToken, {
     initialize: function() {
-	BlockToken.call(this, "f");
+	BlockToken.call(this, FORWORD_TOKEN);
     }
 });
 
 var BlockTokenLeft = enchant.Class.create(BlockToken, {
     initialize: function() {
-	BlockToken.call(this, "l");
+	BlockToken.call(this, LEFT_TOKEN);
     }
 });
 
 var BlockTokenRight = enchant.Class.create(BlockToken, {
     initialize: function() {
-	BlockToken.call(this, "r");
+	BlockToken.call(this, RIGHT_TOKEN);
     }
 });
 
 var BlockTokenLoop = enchant.Class.create(BlockToken, {
     initialize: function(n, body) {
-	BlockToken.call(this, "L");
+	BlockToken.call(this, LOOP_TOKEN);
 	this.count = n;    // Loop count (int)
 	this.body = body;  // Array of BlockToken
     }
@@ -32,7 +45,7 @@ var BlockTokenLoop = enchant.Class.create(BlockToken, {
 
 var BlockTokenFuncall = enchant.Class.create(BlockToken, {
     initialize: function(name, args) {
-	BlockToken.call(this, "F");
+	BlockToken.call(this, FUNCALL_TOKEN);
 	this.name = name;  // String (dia, spade, heart, clover)
 	this.args = args;  // Array of Array of BLockToken
     }
