@@ -46,9 +46,36 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
         this.y = offsetY + index * blockSize;
         this.image = game.assets[BLANK];
         this.imgsrc = BLANK;
+        /* LoopのためのcountLabelを生成しておく */
+        this.countLabel = new Label("1");
+        this.countLabel.font = "10px monospace";
+        this.countLabel.x = this.x + 16;
+        this.countLabel.y = this.y + 16;
+        this.countLabel.color = "black";
+        if (this.imgsrc == BSTART) {
+            this.scene.addChild(this.countLabel);
+        }
         this.scene.addChild(this);
+        this.addEventListener("touchstart", function(e) {
+            if (this.imgsrc == BSTART) {
+                if (this.countLabel.text > 9) {
+                    this.countLabel.text = 1;
+                } else {
+                    this.countLabel.text++;
+                }
+            }
+        });
+
     },
     changeToken: function(imgsrc) {
+        /* Blockが変更されるタイミングで必ず一度remove */
+        if (this.imgsrc == BSTART) {
+            this.scene.removeChild(this.countLabel);
+        }
+        if (imgsrc == BSTART) {
+            this.scene.addChild(this.countLabel);
+            this.countLabel.text = "1";
+        }
         this.image = game.assets[imgsrc];
         this.imgsrc = imgsrc;
         this.scene.addChild(this);
@@ -56,6 +83,13 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
     getToken: function() {
         return this.imgsrc;
     },
+    getCount: function() {
+        if (this.imgsrc == BSTART) {
+            return parseInt(this.countLabel.text);
+        } else {
+            return 0;
+        }
+    }
 });
 
 var FillSquare = enchant.Class.create(enchant.Sprite, {
