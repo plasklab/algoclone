@@ -121,7 +121,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     this.EDITOR_BLOCK_MARGIN = 4;
     this.BLOCK_NUM = 12;
     this.EDITOR_MARGIN = 16;
-    this.EDITOR_SYMBOL = [SPEAD, HEART, DIA, CLOVER];
+    this.FUNC_SYMBOL = [SPEAD, HEART, DIA, CLOVER];
 
     var editorBackground = new FillSquare(
         this.EDITOR_X - this.EDITOR_BLOCK_MARGIN,
@@ -131,16 +131,18 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     this.addChild(editorBackground);
 
     this.mainProgramArray = [];
+    this.funcProgramArray = []; /* 二次元配列 */
 
     /* main program */
     for (var i = 0; i < this.BLOCK_NUM; i++) {
         this.mainProgramArray[i] = new EditorBlock(this, 0, i, this.EDITOR_X, this.EDITOR_PROGRAM_TOP + this.EDITOR_BLOCK_MARGIN);
     }
     
-    for (var j = 0; j < this.EDITOR_SYMBOL.length; j++) {
-        new DrawImage(this, this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * (j + 1), this.EDITOR_Y, this.BLOCK_SIZE, this.BLOCK_SIZE, this.EDITOR_SYMBOL[j]);
+    for (var j = 0; j < this.FUNC_SYMBOL.length; j++) {
+        new DrawImage(this, this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * (j + 1), this.EDITOR_Y, this.BLOCK_SIZE, this.BLOCK_SIZE, this.FUNC_SYMBOL[j]);
+        this.funcProgramArray[j] = [];
         for (var i = 0; i < this.BLOCK_NUM; i++) {
-            new EditorBlock(this, 1 + j, i, this.EDITOR_X, this.EDITOR_PROGRAM_TOP + this.EDITOR_BLOCK_MARGIN);
+            this.funcProgramArray[j][i] = new EditorBlock(this, 1 + j, i, this.EDITOR_X, this.EDITOR_PROGRAM_TOP + this.EDITOR_BLOCK_MARGIN);
         }
     }
 
@@ -170,15 +172,27 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     },
 
     dropBlock: function(x, y, token) {
+        /* out of range of y of program editor, cause fast return */
+        if (!(y >= this.EDITOR_PROGRAM_TOP &&
+              y <= this.EDITOR_PROGRAM_TOP + this.BLOCK_NUM * this.BLOCK_SIZE)) {
+                return false;
+        }
+        var index = Math.floor((y - this.EDITOR_PROGRAM_TOP) / this.BLOCK_SIZE);
         /* in program line to edit main program */
         if (x >= this.EDITOR_X &&
-            x <= this.EDITOR_X + this.BLOCK_SIZE &&
-            y >= this.EDITOR_PROGRAM_TOP &&
-            y <= this.EDITOR_PROGRAM_TOP + this.BLOCK_NUM * this.BLOCK_SIZE) {
+            x <= this.EDITOR_X + this.BLOCK_SIZE) {
             /* change new token */
-            var index = Math.floor((y - this.EDITOR_PROGRAM_TOP) / this.BLOCK_SIZE);
             this.mainProgramArray[index].changeToken(token);
             return true;
+        } else {
+            /* in program line to edit function program */
+            for (var i = 0; i < this.FUNC_SYMBOL.length; i++) {
+                if (x >= this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * (i + 1) &&
+                    x <= this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * (i + 1) + this.BLOCK_SIZE) {
+                    this.funcProgramArray[i][index].changeToken(token);
+                    return true;
+                }
+            }
         }
         return false;
     },
