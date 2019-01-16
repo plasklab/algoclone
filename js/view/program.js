@@ -60,7 +60,6 @@ var TokenBlank = enchant.Class.create(Token, {
     }
 });
 
-
 var Program = enchant.Class.create({
     initialize: function() {
         this.functionNames = [];
