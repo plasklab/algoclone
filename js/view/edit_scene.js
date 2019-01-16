@@ -58,10 +58,10 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     var xOffset = map.x + map.width + 10;
     var yOffset = 10;
     var BLANK = "blank"; // 配置を調整するための空き領域を表す
-    var paletteArray = [ADVANCE, BLANK, RIGHT, LEFT, BSTART, BEND, S_SPEAD, S_HEART, S_DIA, S_CLOVER, SPEAD, HEART, DIA, CLOVER];
+    var paletteArray = [ADVANCE, BLANK, RIGHT, LEFT, BSTART, BEND, S_SPEAD, S_HEART, S_DIA, S_CLOVER, ARG];
 
     var paletteWidth = 76; /* img_size 32 * 2 + margin 4 * 3(left,center,right) */
-    var paletteHeight = Math.floor(paletteArray.length / 2) * 36 + 4;
+    var paletteHeight = Math.round(paletteArray.length / 2) * 36 + 4;
     var paletteBackground = new (enchant.Class.create(enchant.Sprite, {
         initialize: function(x, y, width, height){
             enchant.Sprite.call(this, width,height);
