@@ -24,8 +24,10 @@ var TokenRight = enchant.Class.create(Token, {
 
 
 var TokenParam = enchant.Class.create(Token, {
-    initialize: function() {
+    // createOwnFrame: bool  If this creates its own frame for execution.
+    initialize: function(createOwnFrame) {
         Token.call(this, "Param");
+        this.createOwnFrame = createOwnFrame;
     }
 });
 
@@ -62,7 +64,7 @@ var TokenBlank = enchant.Class.create(Token, {
 var Program = enchant.Class.create({
     initialize: function() {
         this.functionNames = [];
-        this.functionTokens = {};
+        this.functionBody = {};
     },
 
     // name: string
@@ -85,6 +87,13 @@ var Program = enchant.Class.create({
         return this.functionNames;
     },
 
+    computeCodeLength: function(code) {
+        var pc = 0;
+        while (pc < code.length && code[pc].type != "Blank")
+            pc++;
+        return pc;
+    },
+    
     // private
     checkProgram: function(program, isMain) {
         var nest = 0;
