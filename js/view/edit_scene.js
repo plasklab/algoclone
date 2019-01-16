@@ -42,7 +42,7 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
         enchant.Sprite.call(this, 32, 32);
         this.scene = scene;
         var blockSize = 32;
-        this.x = offsetX + lineId * (blockSize + 15);
+        this.x = offsetX + lineId * (blockSize + this.scene.EDITOR_MARGIN);
         this.y = offsetY + index * blockSize;
         this.image = game.assets[BLANK];
         this.imgsrc = BLANK;
@@ -64,12 +64,23 @@ var FillSquare = enchant.Class.create(enchant.Sprite, {
         this.x = x;
         this.y = y;
         var surface = new Surface(width, height);
-        surface.context.fillStyle = "lightgray";
-        surface.context.strokeStyle = "black"
+        surface.context.strokeStyle = "black";
         surface.context.strokeRect(0, 0, width, height);
         this.image = surface;
     }
 });
+
+var DrawImage = enchant.Class.create(enchant.Sprite, {
+    initialize: function(scene, x, y, width, height, imgsrc) {
+        enchant.Sprite.call(this, width, height);
+        this.x = x;
+        this.y = y;
+        this.image = game.assets[imgsrc];
+        this.imgsrc = imgsrc;
+        this.scene = scene;
+        this.scene.addChild(this);
+    }
+})
 
 var EditScene = enchant.Class.create(enchant.Scene, {
     initialize: function(id) {
@@ -109,10 +120,12 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     this.EDITOR_PROGRAM_TOP = this.EDITOR_Y + this.BLOCK_SIZE;
     this.EDITOR_BLOCK_MARGIN = 4;
     this.BLOCK_NUM = 12;
+    this.EDITOR_MARGIN = 16;
+    this.EDITOR_SYMBOL = [SPEAD, HEART, DIA, CLOVER];
 
     var editorBackground = new FillSquare(
         this.EDITOR_X - this.EDITOR_BLOCK_MARGIN,
-        this.EDITOR_PROGRAM_TOP - this.EDITOR_BLOCK_MARGIN,
+        this.EDITOR_PROGRAM_TOP,
         this.BLOCK_SIZE + this.EDITOR_BLOCK_MARGIN * 2,
         this.BLOCK_NUM * this.BLOCK_SIZE + this.EDITOR_BLOCK_MARGIN * 2);
     this.addChild(editorBackground);
@@ -121,7 +134,14 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 
     /* main program */
     for (var i = 0; i < this.BLOCK_NUM; i++) {
-        this.mainProgramArray[i] = new EditorBlock(this, 0, i, this.EDITOR_X, this.EDITOR_PROGRAM_TOP);
+        this.mainProgramArray[i] = new EditorBlock(this, 0, i, this.EDITOR_X, this.EDITOR_PROGRAM_TOP + this.EDITOR_BLOCK_MARGIN);
+    }
+    
+    for (var j = 0; j < this.EDITOR_SYMBOL.length; j++) {
+        new DrawImage(this, this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * (j + 1), this.EDITOR_Y, this.BLOCK_SIZE, this.BLOCK_SIZE, this.EDITOR_SYMBOL[j]);
+        for (var i = 0; i < this.BLOCK_NUM; i++) {
+            new EditorBlock(this, 1 + j, i, this.EDITOR_X, this.EDITOR_PROGRAM_TOP + this.EDITOR_BLOCK_MARGIN);
+        }
     }
 
     // paletteArrayの中身に従ってblockを配置
@@ -151,10 +171,6 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 
     dropBlock: function(x, y, token) {
         /* in program line to edit main program */
-        console.log("(" + x + "," + y +")");
-        console.log("this.EDITOR_X: " + this.EDITOR_X);
-        console.log("this.EDITOR_PROGRAM_TOP: " + this.EDITOR_PROGRAM_TOP);
-        console.log("this.EDITOR_HEIGHT: " + this.BLOCK_NUM * this.BLOCK_SIZE);
         if (x >= this.EDITOR_X &&
             x <= this.EDITOR_X + this.BLOCK_SIZE &&
             y >= this.EDITOR_PROGRAM_TOP &&
