@@ -67,8 +67,22 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 		this.y = map.y + map.height + 10;
 		this.editScene = editScene;
 		this.addEventListener("touchstart", function() {
-		    game.pushScene(new PlayScene(id,
-						 this.editScene.getProgram()));
+		    var prog = new Program();
+		    var body = [
+			new TokenForward(),
+			new TokenRight(),
+			new TokenFuncall("hart"),
+			new TokenLoop(3),
+			new TokenBlockEnd(),
+			new TokenBlockEnd(),
+			new TokenParam(),
+			new TokenBlank(),
+			new TokenBlockEnd(),
+			new TokenLoop(3)
+		    ];
+		    if (prog.add("main", body) == false)
+			alert("invalid program");
+		    game.pushScene(new PlayScene(id, prog));
 		});
 	    },
 	}))(this);
