@@ -22,7 +22,8 @@ var TokenRight = enchant.Class.create(Token, {
     }
 });
 
-var TokenParam = enchant.class.create(Token, {
+
+var TokenParam = enchant.Class.create(Token, {
     initialize: function() {
         Token.call(this, "Param");
     }
@@ -34,7 +35,6 @@ var TokenLoop = enchant.Class.create(Token, {
         this.count = n;    // Loop count (int)
     }
 });
-
 var TokenFuncall = enchant.Class.create(Token, {
     initialize: function(name) {
         Token.call(this, "Funcall");
@@ -58,6 +58,7 @@ var TokenBlank = enchant.Class.create(Token, {
     }
 });
 
+
 var Program = enchant.Class.create({
     initialize: function() {
         this.functionNames = [];
@@ -68,6 +69,10 @@ var Program = enchant.Class.create({
     // body: array of tokens
     add: function(name, body) {
         this.functionNames.push[name];
+        if (!this.checkProgram(body, name == "main")) {
+            this.functionNames.pop();
+            return false;
+        }
         this.functionBody[name] = body;
         return true;
     },
@@ -80,7 +85,29 @@ var Program = enchant.Class.create({
         return this.functionNames;
     },
 
+    // private
+    checkProgram: function(program, isMain) {
+        var nest = 0;
+        for (var i = 0; i < program.length; i++) {
+            var token = program[i];
+            if (token.type == "Blank")
+                break;
+            else if (token.type == "Loop" || token.type == "Funcall")
+                nest++;
+            else if (token.type == "End") {
+                if (nest > 0)
+                    nest--;
+                else
+                    return false;
+            } else if (token.type == "Param") {
+                if (isMain)
+                    return false;
+            }
+        }
+        return nest == 0;
+    }
 });
+
 
 /* Local Variables: */
 /* indent-tabs-mode: nil */
