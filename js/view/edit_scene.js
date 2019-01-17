@@ -1,4 +1,5 @@
 const PROGRAM_MAIN = "main";
+const PALETTE_ZONE = "palette";
 const FUNC_NAME = ["spead", "heart", "dia", "clover"];
 var PaletteBlock = enchant.Class.create(enchant.Sprite, {
     initialize: function(scene, x, y, imgsrc) {
@@ -21,7 +22,8 @@ var PaletteBlock = enchant.Class.create(enchant.Sprite, {
 	});
 
 	this.addEventListener("touchend", function(e) {
-        this.scene.dropBlock(e.x, e.y, this.imgsrc);
+        var location = this.scene.getBlockByLocation(e.x, e.y);
+        this.scene.dropBlock(location, this.imgsrc);
         this.scene.removeChild(this);
 	});
 
@@ -55,8 +57,7 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
         /* LoopのためのcountLabelを生成しておく */
         this.countLabel = new Label("1");
         this.countLabel.font = "10px monospace";
-        this.countLabel.x = this.x + 16;
-        this.countLabel.y = this.y + 16;
+        this.moveCountLabel();
         this.countLabel.color = "black";
         if (this.imgsrc == BSTART) {
             this.scene.addChild(this.countLabel);
@@ -71,6 +72,7 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
             if (this.getBlockName() != BLANK) {
                 this.x = e.x - this.clkOffX;
                 this.y = e.y - this.clkOffY;
+                this.moveCountLabel();
             }
         });
         
@@ -78,11 +80,18 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
             /* BLANKの場合動かせない */
             if (this.getBlockName() == BLANK) return;
             /* Blockが動かない場合は変更なし */
-            if (this.scene.getBlockByLocation(e.x, e.y) != this.scene.getBlockByLocation(this.origX, this.origY) &&
-                this.scene.dropBlock(e.x, e.y, this.getBlockName())) {
+            var location = this.scene.getBlockByLocation(e.x, e.y);
+            if (location == PALETTE_ZONE) {
+                if (this.countLabel.visible) {
+                    this.scene.removeChild(this.countLabel);
+                }
+                this.imgsrc = BLANK;
+                this.image = game.assets[BLANK];
+            } else if (location != this &&
+                this.scene.dropBlock(location, this.getBlockName())) {
                 /* Blockがループの始端だったらcountを引き継ぐ */
                 if (this.getBlockName() == BSTART) {
-                    this.scene.setCountOfLoopBlock(e.x, e.y, this.getCount());
+                    this.scene.setCountOfLoopBlock(location, this.getCount());
                     this.setCount(1);
                 }
                 /* 移動元のブロックをBLANKに変更 */
@@ -91,7 +100,7 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
                 if (this.countLabel.visible) {
                     this.scene.removeChild(this.countLabel);
                 }
-            } else if (this.imgsrc == BSTART) {
+            } else if (this.imgsrc == BSTART && location == this) {
                 if (this.countLabel.text > 9) {
                     this.countLabel.text = 1;
                 } else {
@@ -100,6 +109,7 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
             }
             this.x = this.origX;
             this.y = this.origY;
+            this.moveCountLabel();
             this.clkOffX = 0;
             this.clkOffY = 0;
         });
@@ -133,6 +143,10 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
             return true;
         }
         return false;
+    },
+    moveCountLabel: function() {
+        this.countLabel.x = this.x + 16;
+        this.countLabel.y = this.y + 16;
     }
 });
 
@@ -179,21 +193,21 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 	this.addChild(new Goal(map.goal_x, map.goal_y));
     
     /* palette */
-    const PALETTE_OFFSET_X = map.x + map.width + 10;
-    const PALETTE_OFFSET_Y = 10;
+    this.PALETTE_OFFSET_X = map.x + map.width + 10;
+    this.PALETTE_OFFSET_Y = 10;
 
     var paletteArray = [ADVANCE, BLANK, RIGHT, LEFT, BSTART, BEND, S_SPEAD, S_HEART, S_DIA, S_CLOVER, ARG];
 
-    const PALETTE_WIDTH = 76; /* img_size 32 * 2 + margin 4 * 3(left,center,right) */
-    const PALETTE_HEIGHT = Math.round(paletteArray.length / 2) * 36 + 4;
-    var paletteBackground = new FillSquare(PALETTE_OFFSET_X - 4, PALETTE_OFFSET_Y - 4, PALETTE_WIDTH, PALETTE_HEIGHT);
+    this.PALETTE_WIDTH = 76; /* img_size 32 * 2 + margin 4 * 3(left,center,right) */
+    this.PALETTE_HEIGHT = Math.round(paletteArray.length / 2) * 36 + 4;
+    var paletteBackground = new FillSquare(this.PALETTE_OFFSET_X - 4, this.PALETTE_OFFSET_Y - 4, this.PALETTE_WIDTH, this.PALETTE_HEIGHT);
     this.addChild(paletteBackground);
 
 
     /* editor zone */
     /* paletteArrayよりも下のレイヤに描画する必要があるため先に描画 */
-    this.EDITOR_X = PALETTE_OFFSET_X + PALETTE_WIDTH + 24;
-    this.EDITOR_Y = PALETTE_OFFSET_Y;
+    this.EDITOR_X = this.PALETTE_OFFSET_X + this.PALETTE_WIDTH + 24;
+    this.EDITOR_Y = this.PALETTE_OFFSET_Y;
     this.BLOCK_SIZE = 32;
     this.EDITOR_PROGRAM_TOP = this.EDITOR_Y + this.BLOCK_SIZE;
     this.EDITOR_BLOCK_MARGIN = 4;
@@ -229,7 +243,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         /* 横2列に1,2,\n 3,4,\n 5,6,...と配置する */
         var y = Math.floor(index / 2) * 36;
         var x = index % 2 == 0 ? 0:36;
-        new PaletteBlock(this, x + PALETTE_OFFSET_X, y + PALETTE_OFFSET_Y, paletteArray[index]);
+        new PaletteBlock(this, x + this.PALETTE_OFFSET_X, y + this.PALETTE_OFFSET_Y, paletteArray[index]);
     }
 
 	/* play button */
@@ -265,6 +279,14 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     },
 
     getBlockByLocation: function(x,y) {
+        /* location is in palette */
+        if (x >= this.PALETTE_OFFSET_X - 4 &&
+            x <= this.PALETTE_OFFSET_X + this.PALETTE_WIDTH &&
+            y >= this.PALETTE_OFFSET_Y - 4 &&
+            y <= this.PALETTE_OFFSET_Y + this.PALETTE_HEIGHT) {
+            return PALETTE_ZONE;
+        }
+
         /* out of range of y of program editor, cause fast return */
         if (!(y >= this.EDITOR_PROGRAM_TOP &&
             y <= this.EDITOR_PROGRAM_TOP + this.BLOCK_NUM * this.BLOCK_SIZE)) {
@@ -288,21 +310,20 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         return false;
     },
 
-    dropBlock: function(x, y, token) {
+    /* location -> EditorBlock */
+    dropBlock: function(location, block) {
         /* out of range of y of program editor, cause fast return */
-        var block = this.getBlockByLocation(x, y);
-        if (block) {
-            block.changeToken(token);
+        if (location != false && location != PALETTE_ZONE) {
+            location.changeToken(block);
             return true;
         } else {
             return false;
         }
     },
 
-    setCountOfLoopBlock: function (x, y, count) {
-        var block = this.getBlockByLocation(x, y);
-        if (block) {
-            return block.setCount(count);
+    setCountOfLoopBlock: function (location, count) {
+        if (location != false && location !=  PALETTE_ZONE) {
+            return location.setCount(count);
         } else {
             return false;
         }
