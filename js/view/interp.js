@@ -159,7 +159,7 @@ var Interp = enchant.Class.create({
             len = code.length;
         var dest = [];
         for (var i = 0; i < len; i++) {
-            var token = code[i].clone();
+            var token = code[start + i].clone();
             this.callbacks.initToken(token, i);
             dest.push(token);
         }
@@ -237,8 +237,10 @@ var Interp = enchant.Class.create({
             case "Param":
                 var arg = this.findArg();
                 if (token.createOwnFrame) {
+		    console.log("start = "+arg.start+" end = "+arg.end);
                     var code = this.cloneCode(arg.owner.code,
-                                              arg.start, arg.end);
+                                              arg.start,
+					      arg.end - arg.start);
                     this.pushFrame(new ArgFrame(code, frame.slink));
                     this.callbacks.pushVisibleFrame();
                 } else
