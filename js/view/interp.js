@@ -1,14 +1,14 @@
 var ExecFrame = enchant.Class.create({
     initialize: function(type, slink, owner, code, start, end) {
 	this.type = type;
-	this.slink = slink;
-	this.dlink = undefined;
-	this.owner = owner;   // code owner
-	this.code = code;
-	this.start = start;
-	this.end = end;
-	this.pc = undefined;
-	this.nextPC = start;
+	this.slink = slink;      // static link (引数を探すのに使う)
+	this.dlink = undefined;  // dynamic link
+	this.owner = owner;      // code owner (どのフレームのコードを実行するか)
+	this.code = code;        // 実行するコード
+	this.start = start;      // 実行を表示する最初のトークン
+	this.end = end;          // 実行を表示する最後のトークン + 1
+	this.pc = undefined;     // 実行中のトークン(LoopやFuncallは開括弧トークン)
+	this.nextPC = start;     // 次に実行するトークン
     },
 
     getNextToken: function() {
@@ -18,6 +18,8 @@ var ExecFrame = enchant.Class.create({
 	return this.code[this.pc];
     },
 
+    // pc 以降で最初の対応していない閉じ括弧の位置を返す．
+    // pc はループや関数の内部の位置を想定している．
     findEnd: function(pc) {
 	if (pc == undefined)
 	    pc = this.pc;
@@ -35,10 +37,12 @@ var ExecFrame = enchant.Class.create({
 	}
     },
 
+    // nextPC を次のトークンに進める
     incPC: function() {
 	this.nextPC = this.pc + 1;
     },
 
+    // nextPC を現在のコードブロックの後まで進める
     jumpToEnd: function() {
 	this.nextPC = this.findEnd(this.pc + 1) + 1;
     }
@@ -51,6 +55,7 @@ var computeCodeLength = function(code) {
     return pc;
 };    
 
+// 関数のフレーム
 var FunctionFrame = enchant.Class.create(ExecFrame, {
     initialize: function(name, code, arg) {
 	ExecFrame.call(this, "FunctionFrame", undefined, this, code, 0,
@@ -60,6 +65,9 @@ var FunctionFrame = enchant.Class.create(ExecFrame, {
     },
 });
 
+// ループのフレーム
+//   関数や引数のフレーム内のコードを使う．
+//   コードに範囲には開き括弧と閉じ括弧を含める．
 var LoopFrame = enchant.Class.create(ExecFrame, {
     initialize: function(count, start, owner) {
 	ExecFrame.call(this, "LoopFrame", owner, owner,
@@ -69,6 +77,7 @@ var LoopFrame = enchant.Class.create(ExecFrame, {
 	this.nextPC = start + 1;
     },
 
+    // nextPC をループ先頭に戻す
     rewindPC: function() {
 	if (this.currentIteration++ >= this.count)
 	    this.nextPC = this.end;
@@ -77,12 +86,16 @@ var LoopFrame = enchant.Class.create(ExecFrame, {
     }
 });	
 
+// 実引数のフレーム（独自の表示フレーム（ふきだし）を作る場合）
 var ArgFrame = enchant.Class.create(ExecFrame, {
     initialize: function(code, slink) {
 	ExecFrame.call(this, "ArgFrame", slink, this, code, 0, code.length);
     },
 });
 
+// 実引数のフレーム（独自の表示フレーム（ふきだし）を作らない場合）
+//   関数や引数のフレーム内のコードを使う．
+//   コードの範囲には開き括弧と閉じ括弧を含めない．
 var PArgFrame = enchant.Class.create(ExecFrame, {
     initialize: function(start, slink, owner) {
 	ExecFrame.call(this, "PArgFrame", slink, owner,
@@ -90,6 +103,9 @@ var PArgFrame = enchant.Class.create(ExecFrame, {
     },
 });
 
+// インタプリタ
+//   view への動作指令はコールバックを使う
+//   step が false を返すと実行終了
 var Interp = enchant.Class.create({
     initialize: function(program, callbacks) {
 	this.program = program;
