@@ -331,3 +331,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
     },
 
 });
+
+/* Local Variables: */
+/* indent-tabs-mode: nil */
+/* End: */

@@ -523,3 +523,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     this.addChild(this.goal);
   },
 });
+
+/* Local Variables: */
+/* indent-tabs-mode: nil */
+/* End: */
