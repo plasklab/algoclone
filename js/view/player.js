@@ -1,3 +1,101 @@
+
+const PLAYER_DIRECTION_UP = 0;
+const PLAYER_DIRECTION_DOWN = 1;
+const PLAYER_DIRECTION_LEFT = 2;
+const PLAYER_DIRECTION_RIGHT = 3;
+const PLAYER_SIZE = 32;
+
+const MOVE_DIST = 16;
+
+var Player = enchant.Class.create(enchant.Sprite, {
+  initialize: function(x, y, direction) {
+    enchant.Sprite.call(this, PLAYER_SIZE, PLAYER_SIZE);
+    this.image = game.assets[PLAYER];
+    this.setDirection(direction);
+    this.x = x;
+    this.y = y;
+    this.direction = direction;
+  },
+
+  setDirection: function(dire) {
+    var f = 0;
+    if (dire == PLAYER_DIRECTION_UP) {
+      f = 28;
+    } else if (dire == PLAYER_DIRECTION_LEFT) {
+      f = 10;
+    } else if (dire == PLAYER_DIRECTION_RIGHT){
+      f = 19;
+    } else if (dire == PLAYER_DIRECTION_DOWN) {
+      f = 1;
+    } else {
+      console.log("player set_direction error : " + dire);
+    }
+    this.frame = f;
+  },
+
+  moveForward: function() {
+    switch (this.direction) {
+        case PLAYER_DIRECTION_UP: {
+            this.y -= MOVE_DIST;
+        } break;
+        case PLAYER_DIRECTION_DOWN: {
+            this.y += MOVE_DIST;
+        } break;
+        case PLAYER_DIRECTION_LEFT: {
+            this.x -= MOVE_DIST;
+        } break;
+        case PLAYER_DIRECTION_RIGHT: {
+            this.x += MOVE_DIST;
+        } break;
+        default: debugprint("ERROR");
+      }
+  },
+  /*
+  rotateRight: function() {
+    var d = 0;
+    switch (this.direction) {
+      case PLAYER_DIRECTION_UP: {
+        d = PLAYER_DIRECTION_RIGHT;
+      } break;
+      case PLAYER_DIRECTION_DOWN: {
+        d = PLAYER_DIRECTION_LEFT;
+      } break;
+      case PLAYER_DIRECTION_LEFT: {
+        d = PLAYER_DIRECTION_UP
+      } break;
+      case PLAYER_DIRECTION_RIGHT: {
+        d = PLAYER_DIRECTION_DOWN;
+      } break;
+      default: debugprint("ERROR");
+    }
+    this.direction = d;
+    this.setDirection(d);
+  },
+
+  rotateLeft: function() {
+    var d = 0;
+    switch (this.direction) {
+      case PLAYER_DIRECTION_UP: {
+        d = PLAYER_DIRECTION_LEFT;
+      } break;
+      case PLAYER_DIRECTION_DOWN: {
+        d = PLAYER_DIRECTION_RIGHT;
+      } break;
+      case PLAYER_DIRECTION_RIGHT: {
+        d = PLAYER_DIRECTION_DOWN;
+      } break;
+      case PLAYER_DIRECTION_LEFT: {
+        d = PLAYER_DIRECTION_UP;
+      } break;
+      default: debugprint("ERROR");
+    }
+    this.direction = d;
+    this.setDirection(d);
+  },*/
+  
+});
+
+/*
 var Player = enchant.Class.create(enchant.Sprite, {
   initialize: function(x, y, direction) {
     enchant.Sprite.call(this, 32, 32);
@@ -101,4 +199,4 @@ var Player = enchant.Class.create(enchant.Sprite, {
       this.frame = 10;
     }
   },
-});
+});*/

@@ -71,7 +71,7 @@ add_map_3 = function() {
 
   var init_x = 16 * 2 - 8;
   var init_y = 16 * 18 - 12;
-  var init_d = "right";
+  var init_d = PLAYER_DIRECTION_RIGHT;
 
   var goal_x = 16 * 17;
   var goal_y = 16 * 2;
