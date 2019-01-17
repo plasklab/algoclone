@@ -46,6 +46,10 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
         var blockSize = 32;
         this.x = offsetX + lineId * (blockSize + this.scene.EDITOR_MARGIN);
         this.y = offsetY + index * blockSize;
+        this.clkOffX = 0;
+        this.clkOffY = 0;
+        this.origX = this.x;
+        this.origY = this.y;
         this.image = game.assets[BLANK];
         this.imgsrc = BLANK;
         /* LoopのためのcountLabelを生成しておく */
@@ -59,19 +63,50 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
         }
         this.scene.addChild(this);
         this.addEventListener("touchstart", function(e) {
-            if (this.imgsrc == BSTART) {
+            this.clkOffX = e.x - this.x;
+            this.clkOffY = e.y - this.y;
+        });
+
+        this.addEventListener("touchmove", function(e) {
+            if (this.getBlockName() != BLANK) {
+                this.x = e.x - this.clkOffX;
+                this.y = e.y - this.clkOffY;
+            }
+        });
+        
+        this.addEventListener("touchend", function(e) {
+            /* BLANKの場合動かせない */
+            if (this.getBlockName() == BLANK) return;
+            /* Blockが動かない場合は変更なし */
+            if (this.scene.getBlockByLocation(e.x, e.y) != this.scene.getBlockByLocation(this.origX, this.origY) &&
+                this.scene.dropBlock(e.x, e.y, this.getBlockName())) {
+                /* Blockがループの始端だったらcountを引き継ぐ */
+                if (this.getBlockName() == BSTART) {
+                    this.scene.setCountOfLoopBlock(e.x, e.y, this.getCount());
+                    this.setCount(1);
+                }
+                /* 移動元のブロックをBLANKに変更 */
+                this.imgsrc = BLANK;
+                this.image = game.assets[BLANK];
+                if (this.countLabel.visible) {
+                    this.scene.removeChild(this.countLabel);
+                }
+            } else if (this.imgsrc == BSTART) {
                 if (this.countLabel.text > 9) {
                     this.countLabel.text = 1;
                 } else {
                     this.countLabel.text++;
                 }
             }
+            this.x = this.origX;
+            this.y = this.origY;
+            this.clkOffX = 0;
+            this.clkOffY = 0;
         });
-
     },
     changeToken: function(imgsrc) {
         /* Blockが変更されるタイミングで必ず一度remove */
-        if (this.imgsrc == BSTART) {
+        if (this.countLabel.visible) {
             this.scene.removeChild(this.countLabel);
         }
         if (imgsrc == BSTART) {
@@ -91,6 +126,13 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
         } else {
             return 0;
         }
+    },
+    setCount: function(count) {
+        if (this.imgsrc == BSTART) {
+            this.countLabel.text = count;
+            return true;
+        }
+        return false;
     }
 });
 
@@ -222,10 +264,10 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 	this.addChild(playButton);
     },
 
-    dropBlock: function(x, y, token) {
+    getBlockByLocation: function(x,y) {
         /* out of range of y of program editor, cause fast return */
         if (!(y >= this.EDITOR_PROGRAM_TOP &&
-              y <= this.EDITOR_PROGRAM_TOP + this.BLOCK_NUM * this.BLOCK_SIZE)) {
+            y <= this.EDITOR_PROGRAM_TOP + this.BLOCK_NUM * this.BLOCK_SIZE)) {
                 return false;
         }
         var index = Math.floor((y - this.EDITOR_PROGRAM_TOP) / this.BLOCK_SIZE);
@@ -233,19 +275,37 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         if (x >= this.EDITOR_X &&
             x <= this.EDITOR_X + this.BLOCK_SIZE) {
             /* change new token */
-            this.mainProgramArray[index].changeToken(token);
-            return true;
+            return this.mainProgramArray[index];
         } else {
             /* in program line to edit function program */
             for (var i = 0; i < this.FUNC_SYMBOL.length; i++) {
                 if (x >= this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * (i + 1) &&
                     x <= this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * (i + 1) + this.BLOCK_SIZE) {
-                    this.funcProgramArray[i][index].changeToken(token);
-                    return true;
+                    return this.funcProgramArray[i][index];
                 }
             }
         }
         return false;
+    },
+
+    dropBlock: function(x, y, token) {
+        /* out of range of y of program editor, cause fast return */
+        var block = this.getBlockByLocation(x, y);
+        if (block) {
+            block.changeToken(token);
+            return true;
+        } else {
+            return false;
+        }
+    },
+
+    setCountOfLoopBlock: function (x, y, count) {
+        var block = this.getBlockByLocation(x, y);
+        if (block) {
+            return block.setCount(count);
+        } else {
+            return false;
+        }
     },
 
     /* block -> EditorBlock */
