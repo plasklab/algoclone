@@ -1,4 +1,5 @@
 const PROGRAM_MAIN = "main";
+const PALETTE_ZONE = "palette";
 const FUNC_NAME = ["spead", "heart", "dia", "clover"];
 var PaletteBlock = enchant.Class.create(enchant.Sprite, {
     initialize: function(scene, x, y, imgsrc) {
@@ -21,7 +22,8 @@ var PaletteBlock = enchant.Class.create(enchant.Sprite, {
 	});
 
 	this.addEventListener("touchend", function(e) {
-        this.scene.dropBlock(e.x, e.y, this.imgsrc);
+        var location = this.scene.getBlockByLocation(e.x, e.y);
+        this.scene.dropBlock(location, this.imgsrc);
         this.scene.removeChild(this);
 	});
 
@@ -46,32 +48,75 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
         var blockSize = 32;
         this.x = offsetX + lineId * (blockSize + this.scene.EDITOR_MARGIN);
         this.y = offsetY + index * blockSize;
+        this.clkOffX = 0;
+        this.clkOffY = 0;
+        this.origX = this.x;
+        this.origY = this.y;
         this.image = game.assets[BLANK];
         this.imgsrc = BLANK;
         /* LoopのためのcountLabelを生成しておく */
         this.countLabel = new Label("1");
         this.countLabel.font = "10px monospace";
-        this.countLabel.x = this.x + 16;
-        this.countLabel.y = this.y + 16;
+        this.moveCountLabel();
         this.countLabel.color = "black";
         if (this.imgsrc == BSTART) {
             this.scene.addChild(this.countLabel);
         }
         this.scene.addChild(this);
         this.addEventListener("touchstart", function(e) {
-            if (this.imgsrc == BSTART) {
+            this.clkOffX = e.x - this.x;
+            this.clkOffY = e.y - this.y;
+        });
+
+        this.addEventListener("touchmove", function(e) {
+            if (this.getBlockName() != BLANK) {
+                this.x = e.x - this.clkOffX;
+                this.y = e.y - this.clkOffY;
+                this.moveCountLabel();
+            }
+        });
+        
+        this.addEventListener("touchend", function(e) {
+            /* BLANKの場合動かせない */
+            if (this.getBlockName() == BLANK) return;
+            /* Blockが動かない場合は変更なし */
+            var location = this.scene.getBlockByLocation(e.x, e.y);
+            if (location == PALETTE_ZONE) {
+                if (this.countLabel.visible) {
+                    this.scene.removeChild(this.countLabel);
+                }
+                this.imgsrc = BLANK;
+                this.image = game.assets[BLANK];
+            } else if (location != this &&
+                this.scene.dropBlock(location, this.getBlockName())) {
+                /* Blockがループの始端だったらcountを引き継ぐ */
+                if (this.getBlockName() == BSTART) {
+                    this.scene.setCountOfLoopBlock(location, this.getCount());
+                    this.setCount(1);
+                }
+                /* 移動元のブロックをBLANKに変更 */
+                this.imgsrc = BLANK;
+                this.image = game.assets[BLANK];
+                if (this.countLabel.visible) {
+                    this.scene.removeChild(this.countLabel);
+                }
+            } else if (this.imgsrc == BSTART && location == this) {
                 if (this.countLabel.text > 9) {
                     this.countLabel.text = 1;
                 } else {
                     this.countLabel.text++;
                 }
             }
+            this.x = this.origX;
+            this.y = this.origY;
+            this.moveCountLabel();
+            this.clkOffX = 0;
+            this.clkOffY = 0;
         });
-
     },
     changeToken: function(imgsrc) {
         /* Blockが変更されるタイミングで必ず一度remove */
-        if (this.imgsrc == BSTART) {
+        if (this.countLabel.visible) {
             this.scene.removeChild(this.countLabel);
         }
         if (imgsrc == BSTART) {
@@ -91,6 +136,17 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
         } else {
             return 0;
         }
+    },
+    setCount: function(count) {
+        if (this.imgsrc == BSTART) {
+            this.countLabel.text = count;
+            return true;
+        }
+        return false;
+    },
+    moveCountLabel: function() {
+        this.countLabel.x = this.x + 16;
+        this.countLabel.y = this.y + 16;
     }
 });
 
@@ -137,21 +193,21 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 	this.addChild(new Goal(map.goal_x, map.goal_y));
     
     /* palette */
-    const PALETTE_OFFSET_X = map.x + map.width + 10;
-    const PALETTE_OFFSET_Y = 10;
+    this.PALETTE_OFFSET_X = map.x + map.width + 10;
+    this.PALETTE_OFFSET_Y = 10;
 
     var paletteArray = [ADVANCE, BLANK, RIGHT, LEFT, BSTART, BEND, S_SPEAD, S_HEART, S_DIA, S_CLOVER, ARG];
 
-    const PALETTE_WIDTH = 76; /* img_size 32 * 2 + margin 4 * 3(left,center,right) */
-    const PALETTE_HEIGHT = Math.round(paletteArray.length / 2) * 36 + 4;
-    var paletteBackground = new FillSquare(PALETTE_OFFSET_X - 4, PALETTE_OFFSET_Y - 4, PALETTE_WIDTH, PALETTE_HEIGHT);
+    this.PALETTE_WIDTH = 76; /* img_size 32 * 2 + margin 4 * 3(left,center,right) */
+    this.PALETTE_HEIGHT = Math.round(paletteArray.length / 2) * 36 + 4;
+    var paletteBackground = new FillSquare(this.PALETTE_OFFSET_X - 4, this.PALETTE_OFFSET_Y - 4, this.PALETTE_WIDTH, this.PALETTE_HEIGHT);
     this.addChild(paletteBackground);
 
 
     /* editor zone */
     /* paletteArrayよりも下のレイヤに描画する必要があるため先に描画 */
-    this.EDITOR_X = PALETTE_OFFSET_X + PALETTE_WIDTH + 24;
-    this.EDITOR_Y = PALETTE_OFFSET_Y;
+    this.EDITOR_X = this.PALETTE_OFFSET_X + this.PALETTE_WIDTH + 24;
+    this.EDITOR_Y = this.PALETTE_OFFSET_Y;
     this.BLOCK_SIZE = 32;
     this.EDITOR_PROGRAM_TOP = this.EDITOR_Y + this.BLOCK_SIZE;
     this.EDITOR_BLOCK_MARGIN = 4;
@@ -187,7 +243,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         /* 横2列に1,2,\n 3,4,\n 5,6,...と配置する */
         var y = Math.floor(index / 2) * 36;
         var x = index % 2 == 0 ? 0:36;
-        new PaletteBlock(this, x + PALETTE_OFFSET_X, y + PALETTE_OFFSET_Y, paletteArray[index]);
+        new PaletteBlock(this, x + this.PALETTE_OFFSET_X, y + this.PALETTE_OFFSET_Y, paletteArray[index]);
     }
 
 	/* play button */
@@ -223,10 +279,18 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 	this.addChild(playButton);
     },
 
-    dropBlock: function(x, y, token) {
+    getBlockByLocation: function(x,y) {
+        /* location is in palette */
+        if (x >= this.PALETTE_OFFSET_X - 4 &&
+            x <= this.PALETTE_OFFSET_X + this.PALETTE_WIDTH &&
+            y >= this.PALETTE_OFFSET_Y - 4 &&
+            y <= this.PALETTE_OFFSET_Y + this.PALETTE_HEIGHT) {
+            return PALETTE_ZONE;
+        }
+
         /* out of range of y of program editor, cause fast return */
         if (!(y >= this.EDITOR_PROGRAM_TOP &&
-              y <= this.EDITOR_PROGRAM_TOP + this.BLOCK_NUM * this.BLOCK_SIZE)) {
+            y <= this.EDITOR_PROGRAM_TOP + this.BLOCK_NUM * this.BLOCK_SIZE)) {
                 return false;
         }
         var index = Math.floor((y - this.EDITOR_PROGRAM_TOP) / this.BLOCK_SIZE);
@@ -234,19 +298,36 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         if (x >= this.EDITOR_X &&
             x <= this.EDITOR_X + this.BLOCK_SIZE) {
             /* change new token */
-            this.mainProgramArray[index].changeToken(token);
-            return true;
+            return this.mainProgramArray[index];
         } else {
             /* in program line to edit function program */
             for (var i = 0; i < this.FUNC_SYMBOL.length; i++) {
                 if (x >= this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * (i + 1) &&
                     x <= this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * (i + 1) + this.BLOCK_SIZE) {
-                    this.funcProgramArray[i][index].changeToken(token);
-                    return true;
+                    return this.funcProgramArray[i][index];
                 }
             }
         }
         return false;
+    },
+
+    /* location -> EditorBlock */
+    dropBlock: function(location, block) {
+        /* out of range of y of program editor, cause fast return */
+        if (location != false && location != PALETTE_ZONE) {
+            location.changeToken(block);
+            return true;
+        } else {
+            return false;
+        }
+    },
+
+    setCountOfLoopBlock: function (location, count) {
+        if (location != false && location !=  PALETTE_ZONE) {
+            return location.setCount(count);
+        } else {
+            return false;
+        }
     },
 
     /* block -> EditorBlock */

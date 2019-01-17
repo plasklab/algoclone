@@ -285,8 +285,19 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
                 playScene.playerState.direction = d;
             },
             funcall: function(fname) {
-                frameListView.pushFunctionFrame(fname, program.get(fname));
+                //frameListView.pushFunctionFrame(fname, program.get(fname));
             },
+            pushVisibleFrame: function() {
+                var code = engine.currentFrame.code;
+                var fname = engine.currentFrame.name;
+                frameListView.pushFunctionFrame(fname, code);
+            },
+            popVisibleFrame: function() {
+
+            },
+            initToken: function(token, i) {
+
+            }
         }
 
         this.programHasFinished = false;
