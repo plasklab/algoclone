@@ -88,7 +88,8 @@ var FunctionFrameView = enchant.Class.create({
 
         scene.addChild(this.background);
 
-        if (fname != "main") {
+	// fname is undefined if this is an argument frame
+        if (fname && fname != "main") {
             var symX = this.x + this.frameView.MARGIN;
             var symY = this.y;
             var symImg = undefined;
@@ -276,9 +277,13 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
                 playScene.playerState.direction = d;
             },
             pushVisibleFrame: function() {
-                var code = engine.currentFrame.code;
-                var fname = engine.currentFrame.name;
-                frameListView.pushFunctionFrame(fname, code);
+		var frame = engine.currentFrame;
+                var code = frame.code;
+		if (frame.type == "FunctionFrame") {
+                    var fname = frame.name;
+                    frameListView.pushFunctionFrame(fname, code);
+		} else if (frame.type == "ArgFrame")
+                    frameListView.pushFunctionFrame(undefined, code);
             },
             popVisibleFrame: function() {
             },

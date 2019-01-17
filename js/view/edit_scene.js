@@ -366,7 +366,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
                 return new TokenFuncall("clover");
                 break;
             case ARG:
-                return new TokenParam();
+                return new TokenParam(true);
                 break;
         }
     },
