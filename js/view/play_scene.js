@@ -39,9 +39,10 @@ debugprint = function(s) {
 };
 
 var ExecBlock = enchant.Class.create(enchant.Sprite, {
-    initialize: function(scene, index, offsetX, offsetY, imgsrc) {
+    initialize: function(scene, frameView, index, offsetX, offsetY, imgsrc) {
         enchant.Sprite.call(this, 32, 32);
         this.scene = scene;
+        this.frameView = frameView;
         var blockSize = 32;
         this.x = offsetX;
         this.y = offsetY + index * blockSize;
@@ -107,6 +108,7 @@ var FunctionFrameView = enchant.Class.create({
                 frameView.BLOCK_SIZE, frameView.BLOCK_SIZE, symImg);
             this.scene.addChild(this.symbol);
         }
+        this.highlightBlocks = [];
         this.displayBlocks(tokens);
     },
     displayBlocks: function(tokens) {
@@ -136,7 +138,10 @@ var FunctionFrameView = enchant.Class.create({
                 case "Blank": imgid = BLANK; break;
                 default: debugprint("INVALID TOKEN: "+tokens[i]);
             }
-            this.blocks.push(new ExecBlock(this.scene, i, headX, headY, imgid));
+            var block = new ExecBlock(this.scene, this, i, headX, headY, imgid);
+            tokens[i].block = block;
+            //console.log("AAA:"+tokens[i].block);
+            this.blocks.push(block);
         }
     },
     remove: function() {
@@ -145,7 +150,15 @@ var FunctionFrameView = enchant.Class.create({
         for (var i = 0; i < this.blocks.length; i++) {
             this.scene.removeChild(this.blocks[i]);
         }
-    }
+    },
+    addHighlightBlock: function(block) {
+        block.setHighlight(true);
+        this.highlightBlocks.push(block);
+    },
+    removeHighlightBlock: function() {
+        var block = this.highlightBlocks.pop();
+        if (block != undefined) block.setHighlight(false);
+    },
 });
 
 var FrameListView = enchant.Class.create({
@@ -185,6 +198,10 @@ var FrameListView = enchant.Class.create({
             this.frameViewList[i].remove();
         }
     },
+    setHighlight: function(block) {
+        this.frameViewList[this.frameViewList.length-1].removeHighlightBlock();
+        this.frameViewList[this.frameViewList.length-1].addHighlightBlock(block);
+    },
 });
 
 var PlayScene = enchant.Class.create(enchant.Scene, {
@@ -209,7 +226,8 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         var playScene = this;
         this.callbacks = {
             highlight: function(token) {
-                console.log("highlight: "+token.type);
+                playScene.frameListView.setHighlight(token.block);
+                //token.block.setHighlight(true);
             },
             forward: function() {
                 var nextX, nextY;
@@ -288,16 +306,16 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
                 //frameListView.pushFunctionFrame(fname, program.get(fname));
             },
             pushVisibleFrame: function() {
-                var code = engine.currentFrame.code;
-                var fname = engine.currentFrame.name;
-                frameListView.pushFunctionFrame(fname, code);
+                var code = playScene.engine.currentFrame.code;
+                var fname = playScene.engine.currentFrame.name;
+                playScene.frameListView.pushFunctionFrame(fname, code);
             },
             popVisibleFrame: function() {
-
+                playScene.frameListView.pop();
             },
             initToken: function(token, i) {
-
-            }
+                //token.index = i;
+            },
         }
 
         this.programHasFinished = false;
@@ -415,11 +433,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         this.goal = new Goal(map.goal_x, map.goal_y);
         this.addChild(this.goal);
 
-        if (this.frameListView !== undefined) this.frameListView.remove();
-        this.frameListView = new FrameListView(this,
-            map.x + map.width + 10,
-            16,
-            this.program.get("main"));
+        
 
         this.playerState = {
             x: map.init_x,
@@ -428,6 +442,12 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         };
         
         this.engine = new Interp(this.program, this.callbacks);
+        var mainCode = this.engine.getCurrentFrameCode();
+        if (this.frameListView !== undefined) this.frameListView.remove();
+        this.frameListView = new FrameListView(this,
+            map.x + map.width + 10,
+            16,
+            mainCode);
 
         this.updateControlPanel();
     },
