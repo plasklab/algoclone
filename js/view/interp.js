@@ -152,8 +152,23 @@ var Interp = enchant.Class.create({
 	this.callFunction("main", undefined);
     },
 
+    cloneCode: function(code, start, len) {
+	if (start == undefined)
+	    start = 0;
+	if (len == undefined)
+	    len = code.length;
+	var dest = [];
+	for (var i = 0; i < len; i++) {
+	    var token = code[i].clone();
+	    this.callbacks.initToken(token, i);
+	    dest.push(token);
+	}
+	return dest;
+    },
+    
     callFunction: function(name, arg) {
 	var code = this.program.get(name);
+	code = this.cloneCode(code);
 	this.pushFrame(new FunctionFrame(name, code, arg));
     },
 
@@ -178,7 +193,7 @@ var Interp = enchant.Class.create({
 	frame.advancePC();
 	while (!frame.hasNext()) {
 	    if (frame.owner == frame) {
-		this.callbacks.ret();
+		this.callbacks.popVisibleFrame(frame);
 		if (frame.dlink == undefined)
 		    return false;
 		else { 
@@ -217,14 +232,15 @@ var Interp = enchant.Class.create({
 		    slink: frame,
 		};
 		this.callFunction(name, arg);
+		this.callbacks.pushVisibleFrame();
 		break;
 	    case "Param":
 		var arg = this.findArg();
 		if (token.createOwnFrame) {
-		    var code = [];
-		    for (i = arg.start; i < arg.end; i++)
-			code.push(arg.owner.code[i]);
+		    var code = this.cloneCode(arg.owner.code,
+					      arg.start, arg.end);
 		    this.pushFrame(new ArgFrame(code, frame.slink));
+		    this.callbacks.pushVisibleFrame();
 		} else
 		    this.pushFrame(new PArgFrame(arg.start, arg.slink,
 						 arg.owner));

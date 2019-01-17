@@ -9,7 +9,7 @@ var DummyPlayScene = enchant.Class.create(enchant.Scene, {
 
         this.engine = new Interp(program, {
             highlight: function(token) {
-                console.log("highlight: "+token.type);
+                console.log("highlight: "+token.type+" ("+token.index+")");
             },
             forward: function() {
                 console.log("forward");
@@ -19,6 +19,16 @@ var DummyPlayScene = enchant.Class.create(enchant.Scene, {
             },
             right: function() {
                 console.log("right");
+            },
+            pushVisibleFrame: function() {
+                console.log("push");
+            },
+            popVisibleFrame: function(frame) {
+                console.log("pop "+frame.type);
+            },
+            initToken: function(token, i) {
+                console.log(i + ":" + token.type);
+                token.index = i;
             }
         });
 

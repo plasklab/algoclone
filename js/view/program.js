@@ -7,18 +7,30 @@ var Token = enchant.Class.create({
 var TokenForward = enchant.Class.create(Token, {
     initialize: function() {
         Token.call(this, "Forward");
+    },
+
+    clone: function() {
+        return new TokenForward();
     }
 });
 
 var TokenLeft = enchant.Class.create(Token, {
     initialize: function() {
         Token.call(this, "Left");
+    },
+
+    clone: function() {
+        return new TokenLeft();
     }
 });
 
 var TokenRight = enchant.Class.create(Token, {
     initialize: function() {
         Token.call(this, "Right");
+    },
+    
+    clone: function() {
+        return new TokenRight();
     }
 });
 
@@ -28,6 +40,10 @@ var TokenParam = enchant.Class.create(Token, {
     initialize: function(createOwnFrame) {
         Token.call(this, "Param");
         this.createOwnFrame = createOwnFrame;
+    },
+    
+    clone: function() {
+        return new TokenParam(this.createOwnFrame);
     }
 });
 
@@ -35,29 +51,42 @@ var TokenLoop = enchant.Class.create(Token, {
     initialize: function(n) {
         Token.call(this, "Loop");
         this.count = n;    // Loop count (int)
+    },
+
+    clone: function() {
+        return new TokenLoop(this.count);
     }
 });
+
 var TokenFuncall = enchant.Class.create(Token, {
     initialize: function(name) {
         Token.call(this, "Funcall");
         this.name = name;  // string
     },
 
-    getName: function() {
-        return this.name;
-    },
+    clone: function() {
+        return new TokenFuncall(this.name);
+    }
 });
 
 var TokenBlockEnd = enchant.Class.create(Token, {
     initialize: function() {
         Token.call(this, "End");
-    }
+    },
+
+    clone: function() {
+        return new TokenBlockEnd();
+    },
 });
 
 var TokenBlank = enchant.Class.create(Token, {
     initialize: function() {
         Token.call(this, "Blank");
-    }
+    },
+
+    clone: function() {
+        return new TokenBlank();
+    },
 });
 
 var Program = enchant.Class.create({
