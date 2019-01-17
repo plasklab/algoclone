@@ -8,16 +8,45 @@ var ExecFrame = enchant.Class.create({
 	this.start = start;      // 実行を表示する最初のトークン
 	this.end = end;          // 実行を表示する最後のトークン + 1
 	this.pc = undefined;     // 実行中のトークン(LoopやFuncallは開括弧トークン)
-	this.nextPC = start;     // 次に実行するトークン
     },
 
-    getNextToken: function() {
-	this.pc = this.nextPC;
-	if (this.pc == this.end)
-	    return undefined;
+    getToken: function() {
 	return this.code[this.pc];
     },
 
+    normalAdvancePC: function() {
+	if (this.pc == undefined)
+	    this.pc = this.start;
+	else {
+	    var token = this.code[this.pc];
+	    switch(token.type) {
+	    case "Forward":
+	    case "Left":
+	    case "Right":
+	    case "Param":
+	    case "End":
+		this.pc++;
+		break;
+	    case "Funcall":
+	    case "Loop":
+		this.pc = this.findEnd(this.pc + 1) + 1;
+		break;
+	    }
+	}
+    },
+
+    advancePC: function() {
+	this.normalAdvancePC();
+    },
+    
+    hasNext: function() {
+	return this.pc < this.end;
+    },
+
+    isHighlightOnly: function() {
+	return false;
+    },
+    
     // pc 以降で最初の対応していない閉じ括弧の位置を返す．
     // pc はループや関数の内部の位置を想定している．
     findEnd: function(pc) {
@@ -36,16 +65,6 @@ var ExecFrame = enchant.Class.create({
 	    pc++;
 	}
     },
-
-    // nextPC を次のトークンに進める
-    incPC: function() {
-	this.nextPC = this.pc + 1;
-    },
-
-    // nextPC を現在のコードブロックの後まで進める
-    jumpToEnd: function() {
-	this.nextPC = this.findEnd(this.pc + 1) + 1;
-    }
 });
 
 var computeCodeLength = function(code) {
@@ -74,15 +93,34 @@ var LoopFrame = enchant.Class.create(ExecFrame, {
 		       owner.code, start, owner.findEnd(start + 1) + 1);
 	this.count = count;
 	this.currentIteration = 1;
-	this.nextPC = start + 1;
+	this.pc = start;
     },
 
-    // nextPC をループ先頭に戻す
-    rewindPC: function() {
-	if (this.currentIteration++ >= this.count)
-	    this.nextPC = this.end;
-	else
-	    this.nextPC = this.start + 1;
+    ddepth: function() {
+	var i = 0;
+	for (var f = this; f != undefined; f = f.dlink)
+	    i++;
+	return i;
+    },
+
+    advancePC: function() {
+	if (this.pc == this.start)
+	    this.pc++;
+	else {
+	    this.normalAdvancePC();
+	    if (this.pc == this.end) {
+		if (this.currentIteration++ < this.count)
+		    this.pc = this.start;
+	    }
+	}
+    },
+
+//    hasNext: function() {
+//	return this.currentIteration < this.count || this.pc < this.end;
+//    },
+
+    isHighlightOnly: function() {
+	return this.pc == this.start || this.pc == this.end - 1;
     }
 });	
 
@@ -137,65 +175,61 @@ var Interp = enchant.Class.create({
     
     step: function() {
 	var frame = this.currentFrame;
-	var token = frame.getNextToken();
-	while (token == undefined) {
-	    if (frame.type == "FunctionFrame" && frame.name == "main")
-		return false;
+	frame.advancePC();
+	while (!frame.hasNext()) {
+	    if (frame.owner == frame) {
+		this.callbacks.ret();
+		if (frame.dlink == undefined)
+		    return false;
+		else { 
+		    this.popFrame();
+		    return true
+		}
+	    }
 	    this.popFrame();
 	    frame = this.currentFrame;
-	    token = frame.getNextToken();
+	    frame.advancePC();
 	}
-
+	var token = frame.getToken();
+	
 	this.callbacks.highlight(token);
-	switch (token.type) {
-	case "Forward":
-	    this.callbacks.forward();
-	    frame.incPC();
-	    break;
-	case "Left":
-	    this.callbacks.left();
-	    frame.incPC();
-	    break;
-	case "Right":
-	    this.callbacks.right();
-	    frame.incPC();
-	    break;
-	case "Loop":
-	    if (!(frame.type == "LoopFrame" && frame.pc == 0)) {
+	if (!frame.isHighlightOnly()) {
+	    switch (token.type) {
+	    case "Forward":
+		this.callbacks.forward();
+		break;
+	    case "Left":
+		this.callbacks.left();
+		break;
+	    case "Right":
+		this.callbacks.right();
+		break;
+	    case "Loop":
 		var count = token.count;
 		this.pushFrame(new LoopFrame(count, frame.pc, frame.owner));
-		frame.jumpToEnd();
-	    } else
-		frame.incPC();
-	    break;
-	case "Funcall":
-	    var name = token.name;
-	    var arg = {
-		start: frame.pc + 1,
-		end: frame.findEnd(frame.pc + 1),
-		owner: frame.owner,
-		slink: frame,
-	    };
-	    this.callFunction(name, arg);
-	    frame.jumpToEnd();
-	    break;
-	case "Param":
-	    var arg = this.findArg();
-	    if (token.createOwnFrame) {
-		var code = [];
-		for (i = arg.start; i < arg.end; i++)
-		    code.push(arg.owner.code[i]);
-		this.pushFrame(new ArgFrame(code, frame.slink));
-	    } else
-		this.pushFrame(new PArgFrame(arg.start, arg.slink, arg.owner));
-	    frame.incPC();
-	    break;
-	case "End":
-	    if (frame.type == "LoopFrame") {
-		this.callbacks.highlight(frame.code[0]);
-		frame.rewindPC();
+		break;
+	    case "Funcall":
+		var name = token.name;
+		var arg = {
+		    start: frame.pc + 1,
+		    end: frame.findEnd(frame.pc + 1),
+		    owner: frame.owner,
+		    slink: frame,
+		};
+		this.callFunction(name, arg);
+		break;
+	    case "Param":
+		var arg = this.findArg();
+		if (token.createOwnFrame) {
+		    var code = [];
+		    for (i = arg.start; i < arg.end; i++)
+			code.push(arg.owner.code[i]);
+		    this.pushFrame(new ArgFrame(code, frame.slink));
+		} else
+		    this.pushFrame(new PArgFrame(arg.start, arg.slink,
+						 arg.owner));
+		break;
 	    }
-	    break;
 	}
 	return true;
     },
