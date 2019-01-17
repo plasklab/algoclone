@@ -170,6 +170,7 @@ var Interp = enchant.Class.create({
 	    break;
 	case "Funcall":
 	    var name = token.name;
+		this.callbacks.funcall(name);
 	    var arg = {
 		start: frame.pc + 1,
 		end: frame.findEnd(frame.pc + 1),
