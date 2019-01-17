@@ -1,5 +1,5 @@
 
-const dummy = true;
+const dummy = false;
 
 if (dummy) {
 	Interp = enchant.Class.create({

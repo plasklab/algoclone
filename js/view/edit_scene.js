@@ -215,7 +215,8 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 		    // if (prog.add("main", body) == false)
             // alert("invalid program");
             var prog = this.editScene.getProgram();
-		    game.pushScene(new PlayScene(id, prog));
+            if (prog !== undefined)
+		        game.pushScene(new PlayScene(id, prog));
 		});
 	    },
 	}))(this);
@@ -302,11 +303,13 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         console.log(PROGRAM_MAIN);
         if(!program.add(PROGRAM_MAIN, this.getBody(this.mainProgramArray))) {
             alert("invalid program");
+            return undefined;
         };
         for (var i = 0; i < FUNC_NAME.length; i++) {
             console.log(FUNC_NAME[i]);
             if (!program.add(FUNC_NAME[i], this.getBody(this.funcProgramArray[i]))) {
                 alert("invalid program");
+                return undefined;
             }
         }
 	    return program;
