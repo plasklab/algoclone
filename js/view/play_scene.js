@@ -195,6 +195,12 @@ var FrameListView = enchant.Class.create({
             ));
     },
     pop: function() {
+        while (true) {
+            var highlightInfo = this.highlightInfoStack.pop();
+            if (highlightInfo == undefined) break; // mainが終わったらundefinedになる
+            highlightInfo.token.block.setHighlight(false);
+            if (highlightInfo.token.type == "Funcall") break;
+        }
         var poped = this.frameViewList.pop();
         poped.remove();
     },
@@ -212,10 +218,7 @@ var FrameListView = enchant.Class.create({
         // このあたりはhighlightInfoStackで管理する．
 
         // 前回のtokenのハイライトを消す
-        if (this.prevHighlightedToken != undefined) {
-            this.prevHighlightedToken.block.setHighlight(false);
-            this.prevHighlightedToken = undefined;
-        }
+        this.clearPrevHighlighted();
 
         var currentFrameIndex = this.frameViewList.length - 1;
 
@@ -272,6 +275,13 @@ var FrameListView = enchant.Class.create({
             }
         }
     },
+
+    clearPrevHighlighted: function() {
+        if (this.prevHighlightedToken != undefined) {
+            this.prevHighlightedToken.block.setHighlight(false);
+            this.prevHighlightedToken = undefined;
+        }
+    }
 });
 
 var PlayScene = enchant.Class.create(enchant.Scene, {
@@ -296,9 +306,6 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         var playScene = this;
         this.callbacks = {
             highlight: function(token) {
-                //playScene.frameListView.setHighlight(token.block);
-                //token.block.setHighlight(true);
-                
                 playScene.frameListView.setHighlight(token);
             },
             forward: function() {
@@ -384,6 +391,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
             },
             popVisibleFrame: function() {
                 playScene.frameListView.pop();
+                playScene.frameListView.clearPrevHighlighted();
             },
             initToken: function(token, i) {
                 //token.index = i;
@@ -542,7 +550,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
                 game.pushScene(gameClearScene);
         } else {
             // Game over.
-            gameFailed();
+            this.gameFailed();
         }
     },
 
