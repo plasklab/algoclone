@@ -1,6 +1,8 @@
 const PROGRAM_MAIN = "main";
-const PALETTE_ZONE = "palette";
 const FUNC_NAME = ["spead", "heart", "dia", "clover"];
+const PROGRAM_LENGTH = 12;
+const PALETTE_ZONE = "palette";
+
 var PaletteBlock = enchant.Class.create(enchant.Sprite, {
     initialize: function(scene, x, y, imgsrc) {
 	enchant.Sprite.call(this, 32, 32);
@@ -23,12 +25,14 @@ var PaletteBlock = enchant.Class.create(enchant.Sprite, {
 
 	this.addEventListener("touchend", function(e) {
         var index = this.scene.getIndexByLocation(e.x, e.y);
+        console.log(e.x + "," + e.y + "," + index);
         if (index != -1 && index != PALETTE_ZONE) {
-            console.log(Math.floor(index));
             var target = this.scene.getBlockByIndex(Math.floor(index));
             var clickInPart = (Math.floor(index*4)) % 4;
-            if (clickInPart == 0 || clickInPart == 3) {
+            if ((clickInPart == 0 || clickInPart == 3 ) &&
+                Math.floor(index % PROGRAM_LENGTH) < PROGRAM_LENGTH - 1) {
                 /* insert at before block */
+                /* if insert at before last block, change last block */
                 this.scene.insertBlock(index, this.imgsrc);
             } else {
                 /* change block */
@@ -102,11 +106,6 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
             /* palette zoneにドロップしたら削除 */
             if (index == PALETTE_ZONE) {
                 this.setBlank();
-/*                if (this.countLabel.visible) {
-                    this.scene.removeChild(this.countLabel);
-                }
-                this.imgsrc = BLANK;
-                this.image = game.assets[BLANK];*/
                 return;
             }
             var target = this.scene.getBlockByIndex(Math.floor(index));
@@ -117,9 +116,10 @@ var EditorBlock = enchant.Class.create(enchant.Sprite, {
                 var count = this.getCount();
                 this.setBlank();
                 var clickInPart = (Math.floor(index*4)) % 4;
-                if (clickInPart == 0 || clickInPart == 3) {
+                if ((clickInPart == 0 || clickInPart == 3 ) &&
+                    Math.round(index % PROGRAM_LENGTH) < PROGRAM_LENGTH - 1) {
                     /* insert at before block */
-                    this.scene.insertBlock(index + 1, target.getBlockName());
+                    this.scene.insertBlock(index, target.getBlockName());
                 } else {
                     /* change block */
                     target.replaceBlock(blockName, count);
@@ -234,7 +234,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     this.BLOCK_SIZE = 32;
     this.EDITOR_PROGRAM_TOP = this.EDITOR_Y + this.BLOCK_SIZE;
     this.EDITOR_BLOCK_MARGIN = 4;
-    this.BLOCK_NUM = 12;
+    this.BLOCK_NUM = PROGRAM_LENGTH;
     this.EDITOR_MARGIN = 16;
     this.FUNC_SYMBOL = [SPEAD, HEART, DIA, CLOVER];
 
@@ -302,11 +302,11 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     },
 
     getBlockByIndex: function(index) {
-        if (index < this.mainProgramArray.length) {
+        if (index < PROGRAM_LENGTH) {
             return this.mainProgramArray[index];
         } else {
-            var funcNum = Math.floor((index - this.mainProgramArray.length) / this.mainProgramArray.length);
-            var funcIndex = index % this.mainProgramArray.length;
+            var funcNum = Math.floor((index - PROGRAM_LENGTH) / PROGRAM_LENGTH);
+            var funcIndex = index % PROGRAM_LENGTH;
             return this.funcProgramArray[funcNum][funcIndex];
         }
     },
@@ -321,6 +321,12 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         }
 
         /* out of range of y of program editor, cause fast return */
+        // console.log(this.EDITOR_PROGRAM_TOP);
+        // = 42
+        // console.log(this.EDITOR_PROGRAM_TOP + this.BLOCK_NUM * this.BLOCK_SIZE);
+        // = 426
+        // 一番下に挿入した場合誤作動する
+        y -= this.EDITOR_BLOCK_MARGIN;
         if (!(y >= this.EDITOR_PROGRAM_TOP &&
             y <= this.EDITOR_PROGRAM_TOP + this.BLOCK_NUM * this.BLOCK_SIZE)) {
                 return -1;
@@ -338,7 +344,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
             for (var i = 0; i < this.FUNC_SYMBOL.length; i++) {
                 if (x >= this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * (i + 1) &&
                     x <= this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * (i + 1) + this.BLOCK_SIZE) {
-                    return (index + (i + 1) * this.mainProgramArray.length);
+                    return (index + (i + 1) * PROGRAM_LENGTH);
                 }
             }
         }
@@ -346,15 +352,20 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     },
 
     insertBlock: function(index, block) {
-        var funcNum = Math.floor(index / this.mainProgramArray.length);
-        var targetIndex = Math.round(index) % this.mainProgramArray.length;
+        var funcNum = Math.floor(index / PROGRAM_LENGTH);
+        var targetIndex = Math.round(index % PROGRAM_LENGTH);
+        console.log(targetIndex);
         if (funcNum == 0) {
             // mainProgramArray
-            this.recursiveMoveBehindBlock(targetIndex + 1, this.mainProgramArray);
+            if (targetIndex + 1 < PROGRAM_LENGTH && this.mainProgramArray[targetIndex].getBlockName() != BLANK) {
+                this.recursiveMoveBehindBlock(targetIndex + 1, this.mainProgramArray);
+            }
             this.mainProgramArray[targetIndex].changeBlock(block);
         } else {
             // funcProgramArray
-            this.recursiveMoveBehindBlock(targetIndex + 1, this.funcProgramArray[funcNum - 1]);
+            if (targetIndex + 1 < PROGRAM_LENGTH && this.funcProgramArray[funcNum - 1][targetIndex].getBlockName() != BLANK) {
+                this.recursiveMoveBehindBlock(targetIndex + 1, this.funcProgramArray[funcNum - 1]);
+            }
             this.funcProgramArray[funcNum - 1][targetIndex].changeBlock(block);
         }
     },
