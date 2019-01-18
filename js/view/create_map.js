@@ -1,5 +1,8 @@
+
+const MAP_BLOCK_SIZE = 16;
+
 create_map = function (map_0, map_1, map_col, init_x, init_y, init_d, g_x, g_y) {
-  var map = new Map(16, 16);
+  var map = new Map(MAP_BLOCK_SIZE, MAP_BLOCK_SIZE);
   map.image = game.assets[MAP];
   map.loadData(map_0, map_1);
   map.collisionData = map_col;
