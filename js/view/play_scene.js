@@ -398,9 +398,16 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
             },
         }
 
+        this.autoPlaying = true;
         this.programHasFinished = false;
-        this.autoPlaying = false;
         this.init();
+        if (this.autoPlaying) {
+            setTimeout(function() {
+                if (this.autoPlaying) {
+                    this.execNextStep();
+                }
+            }.bind(this), this.autoPlayingInterval);
+        }
     },
     execNextStep: function() {
         if (this.engine.step()) {
