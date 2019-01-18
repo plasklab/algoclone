@@ -84,7 +84,7 @@ var FunctionFrameView = enchant.Class.create({
         this.fname = fname;
         this.width = frameView.BLOCK_SIZE + frameView.MARGIN * 2;
         this.bodyY = y + frameView.MARGIN + frameView.BLOCK_SIZE;
-        this.bodyHeight = frameView.BLOCK_NUM * frameView.BLOCK_SIZE + frameView.MARGIN * 2;
+        this.bodyHeight = tokens.length * frameView.BLOCK_SIZE + frameView.MARGIN * 2;
         this.background = new FillSquare(
             x,
             this.bodyY,
@@ -179,6 +179,7 @@ var FrameListView = enchant.Class.create({
         this.prevHighlightedToken = undefined;
     },
     pushFunctionFrame: function(fname, tokens) {
+        // if (fname == undefined) -> ArgFrame, otherwise FunctionFrame
         var prevFrame = this.frameViewList[this.frameViewList.length - 1];
         var newFrameViewPosX = prevFrame.x + prevFrame.width + this.DIST_BITWEEN_FRAMES;
         var newFrameViewPosY = this.y;
