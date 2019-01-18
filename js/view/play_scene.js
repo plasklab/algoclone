@@ -65,8 +65,8 @@ var ExecBlock = enchant.Class.create(enchant.Sprite, {
             return 0;
         }
     }*/
-    setHighlight: function(h) {
-        if (h) {
+    setHighlight: function(on) {
+        if (on) {
             this.backgroundColor = "yellow";
         } else {
             this.backgroundColor = "white";
@@ -81,6 +81,7 @@ var FunctionFrameView = enchant.Class.create({
         this.index = index;
         this.x = x;
         this.y = y;
+        this.fname = fname;
         this.width = frameView.BLOCK_SIZE + frameView.MARGIN * 2;
         this.bodyY = y + frameView.MARGIN + frameView.BLOCK_SIZE;
         this.bodyHeight = frameView.BLOCK_NUM * frameView.BLOCK_SIZE + frameView.MARGIN * 2;
@@ -93,7 +94,8 @@ var FunctionFrameView = enchant.Class.create({
 
         scene.addChild(this.background);
 
-        if (fname != "main") {
+        if (fname == undefined) { // Argframe
+        } else if (fname != "main") { // Function
             var symX = this.x + this.frameView.MARGIN;
             var symY = this.y;
             var symImg = undefined;
@@ -109,7 +111,7 @@ var FunctionFrameView = enchant.Class.create({
                 frameView.BLOCK_SIZE, frameView.BLOCK_SIZE, symImg);
             this.scene.addChild(this.symbol);
         }
-        this.highlightBlocks = [];
+
         this.displayBlocks(tokens);
     },
     displayBlocks: function(tokens) {
@@ -152,14 +154,6 @@ var FunctionFrameView = enchant.Class.create({
             this.scene.removeChild(this.blocks[i]);
         }
     },
-    addHighlightBlock: function(block) {
-        block.setHighlight(true);
-        this.highlightBlocks.push(block);
-    },
-    removeHighlightBlock: function() {
-        var block = this.highlightBlocks.pop();
-        if (block != undefined) block.setHighlight(false);
-    },
 });
 
 var FrameListView = enchant.Class.create({
@@ -178,6 +172,10 @@ var FrameListView = enchant.Class.create({
         this.frameViewList.push(new FunctionFrameView(this.scene, this, 0, x, y, "main", tokens));
 
         this.highlightInfoStack = [];
+        this.highlightInfoStack.top = function() {
+            if (this.length == 0) return undefined;
+            return this[this.length-1];
+        };
         this.prevHighlightedToken = undefined;
     },
     pushFunctionFrame: function(fname, tokens) {
@@ -195,14 +193,22 @@ var FrameListView = enchant.Class.create({
             ));
     },
     pop: function() {
-        while (true) {
-            var highlightInfo = this.highlightInfoStack.pop();
-            if (highlightInfo == undefined) break; // mainが終わったらundefinedになる
-            highlightInfo.token.block.setHighlight(false);
-            if (highlightInfo.token.type == "Funcall") break;
-        }
         var poped = this.frameViewList.pop();
         poped.remove();
+        if (poped.fname == undefined) {// 消す対象がArgFrameのとき
+            var highlightInfo = this.highlightInfoStack.top();
+            if (highlightInfo != undefined) {
+                highlightInfo.token.block.setHighlight(false);
+            }
+            return;
+        } else { // 消す対象がFunctionFrameのとき highlightInfoから関数をpopするまでpopし続ける
+            while (true) {
+                var highlightInfo = this.highlightInfoStack.pop();
+                if (highlightInfo == undefined) break; // mainが終わったらundefinedになる
+                highlightInfo.token.block.setHighlight(false);
+                if (highlightInfo.token.type == "Funcall") break;
+            }
+        }
     },
     remove: function() {
         for (var i = 0; i < this.frameViewList.length; i++) {
@@ -227,8 +233,7 @@ var FrameListView = enchant.Class.create({
             var top = this.highlightInfoStack[this.highlightInfoStack.length - 1];
             switch (top.token.type) {
                 case "Param": {
-                    if (token.frameIndex == currentFrameIndex) {
-                        console.log("top: unhighlight:"+top.token.type);
+                    if (!top.token.createOwnFrame && token.frameIndex == currentFrameIndex) {
                         top.token.block.setHighlight(false);
                         this.highlightInfoStack.pop();
                     }
@@ -385,9 +390,14 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
                 //frameListView.pushFunctionFrame(fname, program.get(fname));
             },
             pushVisibleFrame: function() {
-                var code = playScene.engine.currentFrame.code;
-                var fname = playScene.engine.currentFrame.name;
-                playScene.frameListView.pushFunctionFrame(fname, code);
+                var currentFrame = playScene.engine.currentFrame;
+                var code = currentFrame.code;
+                if (currentFrame.type == "FunctionFrame") {
+                    var fname = currentFrame.name;
+                    playScene.frameListView.pushFunctionFrame(fname, code);
+                } else if (playScene.engine.currentFrame.type == "ArgFrame") {
+                    playScene.frameListView.pushFunctionFrame(undefined, code);
+                }
             },
             popVisibleFrame: function() {
                 playScene.frameListView.pop();
@@ -400,6 +410,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
 
         this.autoPlaying = true;
         this.programHasFinished = false;
+        this.interrupted = false;
         this.init();
         if (this.autoPlaying) {
             setTimeout(function() {
@@ -410,15 +421,17 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         }
     },
     execNextStep: function() {
-        if (this.engine.step()) {
-            setTimeout(function() {
-                if (this.autoPlaying) {
-                    this.execNextStep();
-                }
-            }.bind(this), this.autoPlayingInterval);
-        } else {
-            // 実行終了
-            this.end();
+        if (!this.interrupted) {
+            if (this.engine.step()) {
+                setTimeout(function() {
+                    if (this.autoPlaying) {
+                        this.execNextStep();
+                    }
+                }.bind(this), this.autoPlayingInterval);
+            } else {
+                // 実行終了
+                this.end();
+            }
         }
     },
     initControlPanel: function() {		
@@ -430,6 +443,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         btnEdit.y = this.controlPanelOffsetY;
         btnEdit.addEventListener("touchstart", function() {
             game.popScene();
+            playScene.interrupted = true;
         });
         this.addChild(btnEdit);
 
@@ -580,3 +594,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
     },
 
 });
+
+/* Local Variables: */
+/* indent-tabs-mode: nil */
+/* End: */
