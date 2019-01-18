@@ -327,6 +327,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
 
                 if (map.hitTest(nextX*MAP_BLOCK_SIZE, nextY*MAP_BLOCK_SIZE)) {
                     console.log("GameOver");
+                    playScene.gameFailed();
                 } else {
                     playScene.player.moveForward();
                     playScene.playerState.x = nextX;
@@ -401,9 +402,8 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
                 }
             }.bind(this), this.autoPlayingInterval);
         } else {
-            this.autoPlaying = false;
-            this.programHasFinished = true;
-            this.updateControlPanel();
+            // 実行終了
+            this.end();
         }
     },
     initControlPanel: function() {		
@@ -496,15 +496,13 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
     init: function() {
         var map = this.map;
 
-        if (this.player !== undefined) this.removeChild(this.player);
-        this.player = new Player(map.init_x, map.init_y, map.init_direction);
-        this.addChild(this.player);
-
         if (this.goal !== undefined) this.removeChild(this.goal);
         this.goal = new Goal(map.goal_x, map.goal_y);
         this.addChild(this.goal);
 
-        
+        if (this.player !== undefined) this.removeChild(this.player);
+        this.player = new Player(map.init_x, map.init_y, map.init_direction);
+        this.addChild(this.player);
 
         this.playerState = {
             x: map.init_x,
@@ -521,6 +519,49 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
             mainCode);
 
         this.updateControlPanel();
+    },
+
+    end: function() {
+        var playScene = this;
+        if (this.playerState.x == this.map.goal_x &&
+            this.playerState.y == this.map.goal_y) {
+                // Game clear.
+                var gameClearScene = new Scene();
+                var clearImg = new Sprite(267, 48);
+                clearImg.x = 267; clearImg.y = 48;
+                clearImg.scaleX = 2;
+                clearImg.scaleY = 2;
+                clearImg.image = game.assets[CLEAR];
+                gameClearScene.addChild(clearImg);
+                gameClearScene.addEventListener("touchstart", function() {
+                    game.popScene();
+                    playScene.autoPlaying = false;
+                    playScene.programHasFinished = true;
+                    playScene.updateControlPanel();
+                });
+                game.pushScene(gameClearScene);
+        } else {
+            // Game over.
+            gameFailed();
+        }
+    },
+
+    gameFailed: function() {
+        var playScene = this;
+        var gameOverScene = new Scene();
+        var gameOverImg = new Sprite(189, 97);
+        gameOverImg.x = 189; gameOverImg.y = 97;
+        gameOverImg.scaleX = 2;
+        gameOverImg.scaleY = 2;
+        gameOverImg.image = game.assets[GAMEOVER];
+        gameOverScene.addChild(gameOverImg);
+        gameOverScene.addEventListener("touchstart", function() {
+            game.popScene();
+            playScene.autoPlaying = false;
+            playScene.programHasFinished = true;
+            playScene.updateControlPanel();
+        });
+        game.pushScene(gameOverScene);
     },
 
 });

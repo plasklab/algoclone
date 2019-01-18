@@ -24,12 +24,15 @@ const S_CLOVER= "../img/clover_start.png";
 const ARG     = "../img/arg.png";
 const BLANK   = "../img/blank_block.png";
 const PLAY    = "../img/play.png";
+const CLEAR   = "../img/clear.png";
+const GAMEOVER= "../img/end.png";
 
 window.onload = function() {
   game = new Core(WIDTH, HEIGHT);
   game.fps = 60;
   game.preload(PLAYER, MAP, GOAL, ADVANCE, RIGHT, LEFT, LSTART, LEND, BSTART, BEND,
-    SPEAD, HEART, DIA, CLOVER, S_SPEAD, S_HEART, S_DIA, S_CLOVER, ARG, BLANK, PLAY);
+    SPEAD, HEART, DIA, CLOVER, S_SPEAD, S_HEART, S_DIA, S_CLOVER, ARG, BLANK, PLAY,
+    CLEAR, GAMEOVER);
 
   game.onload = function() {
     var main_menu = new MainMenu();
