@@ -5,19 +5,18 @@ const PLAYER_DIRECTION_LEFT = 2;
 const PLAYER_DIRECTION_RIGHT = 3;
 const PLAYER_SIZE = 32;
 
-const MOVE_DIST = 16;
-
 var Player = enchant.Class.create(enchant.Sprite, {
-  initialize: function(x, y, direction) {
+  initialize: function(posX, posY, direction) {
     enchant.Sprite.call(this, PLAYER_SIZE, PLAYER_SIZE);
     this.image = game.assets[PLAYER];
     this.setDirection(direction);
-    this.x = x;
-    this.y = y;
+    this.x = posX*MAP_BLOCK_SIZE-8;  //-8と-12は微調整
+    this.y = posY*MAP_BLOCK_SIZE-12;
     this.direction = direction;
   },
 
   setDirection: function(dire) {
+    this.direction = dire;
     var f = 0;
     if (dire == PLAYER_DIRECTION_UP) {
       f = 28;
@@ -36,16 +35,16 @@ var Player = enchant.Class.create(enchant.Sprite, {
   moveForward: function() {
     switch (this.direction) {
         case PLAYER_DIRECTION_UP: {
-            this.y -= MOVE_DIST;
+            this.y -= MAP_BLOCK_SIZE;
         } break;
         case PLAYER_DIRECTION_DOWN: {
-            this.y += MOVE_DIST;
+            this.y += MAP_BLOCK_SIZE;
         } break;
         case PLAYER_DIRECTION_LEFT: {
-            this.x -= MOVE_DIST;
+            this.x -= MAP_BLOCK_SIZE;
         } break;
         case PLAYER_DIRECTION_RIGHT: {
-            this.x += MOVE_DIST;
+            this.x += MAP_BLOCK_SIZE;
         } break;
         default: debugprint("ERROR");
       }

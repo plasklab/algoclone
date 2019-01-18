@@ -75,9 +75,10 @@ var ExecBlock = enchant.Class.create(enchant.Sprite, {
 });
 
 var FunctionFrameView = enchant.Class.create({
-    initialize: function(scene, frameView, x, y, fname, tokens) {
+    initialize: function(scene, frameView, index, x, y, fname, tokens) {
         this.scene = scene;
         this.frameView = frameView;
+        this.index = index;
         this.x = x;
         this.y = y;
         this.width = frameView.BLOCK_SIZE + frameView.MARGIN * 2;
@@ -140,7 +141,7 @@ var FunctionFrameView = enchant.Class.create({
             }
             var block = new ExecBlock(this.scene, this, i, headX, headY, imgid);
             tokens[i].block = block;
-            //console.log("AAA:"+tokens[i].block);
+            tokens[i].frameIndex = this.index;
             this.blocks.push(block);
         }
     },
@@ -174,7 +175,10 @@ var FrameListView = enchant.Class.create({
         this.DIST_BITWEEN_FRAMES = 8;
 
         this.frameViewList = [];
-        this.frameViewList.push(new FunctionFrameView(this.scene, this, x, y, "main", tokens));
+        this.frameViewList.push(new FunctionFrameView(this.scene, this, 0, x, y, "main", tokens));
+
+        this.highlightInfoStack = [];
+        this.prevHighlightedToken = undefined;
     },
     pushFunctionFrame: function(fname, tokens) {
         var prevFrame = this.frameViewList[this.frameViewList.length - 1];
@@ -183,6 +187,7 @@ var FrameListView = enchant.Class.create({
         this.frameViewList.push(new FunctionFrameView(
             this.scene,
             this,
+            this.frameViewList.length, // 作るframeのindex番号
             newFrameViewPosX,
             newFrameViewPosY,
             fname,
@@ -198,9 +203,74 @@ var FrameListView = enchant.Class.create({
             this.frameViewList[i].remove();
         }
     },
-    setHighlight: function(block) {
-        this.frameViewList[this.frameViewList.length-1].removeHighlightBlock();
-        this.frameViewList[this.frameViewList.length-1].addHighlightBlock(block);
+    setHighlight: function(token) {
+        // 基本的には，前回の呼び出しで与えられたtokenのハイライトを消し，
+        // 今回の呼び出しで与えられたtokenをハイライトする
+
+        // ただし，Paramはその実引数の実行が終わるまで，
+        // Funcallは呼び出した関数がリターンするまでハイライトしなければならない
+        // このあたりはhighlightInfoStackで管理する．
+
+        // 前回のtokenのハイライトを消す
+        if (this.prevHighlightedToken != undefined) {
+            this.prevHighlightedToken.block.setHighlight(false);
+            this.prevHighlightedToken = undefined;
+        }
+
+        var currentFrameIndex = this.frameViewList.length - 1;
+
+        // ParamとFuncallのハイライトを消すべきならば消す
+        if (this.highlightInfoStack.length != 0) {
+            var top = this.highlightInfoStack[this.highlightInfoStack.length - 1];
+            switch (top.token.type) {
+                case "Param": {
+                    if (token.frameIndex == currentFrameIndex) {
+                        console.log("top: unhighlight:"+top.token.type);
+                        top.token.block.setHighlight(false);
+                        this.highlightInfoStack.pop();
+                    }
+                } break;
+                case "Funcall": {
+                    if (top.frameIndex == currentFrameIndex) {
+                        top.token.block.setHighlight(false);
+                        this.highlightInfoStack.pop();
+                    }
+                } break;
+                default: 
+                    console.assert("highlightInfoStack: unexpected token type: "+top.token.type);
+            }
+        }
+
+        // ParamとFuncallはhighlightInfoStackにpushしてハイライト
+        // 他はprevHighlightedTokenに記録&ハイライト
+        switch (token.type) {
+            case "Param": {
+                this.highlightInfoStack.push({
+                    token: token,
+                    frameIndex: currentFrameIndex,
+                });
+                token.block.setHighlight(true);
+            } break;
+            case "Funcall": {
+                this.highlightInfoStack.push({
+                    token: token,
+                    frameIndex: currentFrameIndex,
+                });
+                token.block.setHighlight(true);
+            } break;
+            case "Blank": 
+            case "Forward":
+            case "Left":
+            case "Right":
+            case "Loop":
+            case "End": {
+                token.block.setHighlight(true);
+                this.prevHighlightedToken = token;
+            } break;
+            default: {
+                console.assert("highlight: unexpected token type: "+token.type);
+            }
+        }
     },
 });
 
@@ -226,8 +296,10 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         var playScene = this;
         this.callbacks = {
             highlight: function(token) {
-                playScene.frameListView.setHighlight(token.block);
+                //playScene.frameListView.setHighlight(token.block);
                 //token.block.setHighlight(true);
+                
+                playScene.frameListView.setHighlight(token);
             },
             forward: function() {
                 var nextX, nextY;
@@ -237,8 +309,8 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
                         nextY = playScene.playerState.y - 1;
                     } break;
                     case PLAYER_DIRECTION_DOWN: {
-                        nextX = playScene.playerState.x + 1;
-                        nextY = playScene.playerState.y;
+                        nextX = playScene.playerState.x;
+                        nextY = playScene.playerState.y + 1;
                     } break;
                     case PLAYER_DIRECTION_LEFT: {
                         nextX = playScene.playerState.x - 1;
@@ -253,8 +325,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
                     }
                 }
 
-                const mapBlockSize = 16;
-                if (map.hitTest(nextX*mapBlockSize, nextY*mapBlockSize)) {
+                if (map.hitTest(nextX*MAP_BLOCK_SIZE, nextY*MAP_BLOCK_SIZE)) {
                     console.log("GameOver");
                 } else {
                     playScene.player.moveForward();
