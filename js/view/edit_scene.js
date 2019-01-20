@@ -305,6 +305,12 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         }
 
         /* out of range of y of program editor, cause fast return */
+        // console.log(this.EDITOR_PROGRAM_TOP);
+        // = 42
+        // console.log(this.EDITOR_PROGRAM_TOP + this.BLOCK_NUM * this.BLOCK_SIZE);
+        // = 426
+        // 一番下に挿入した場合誤作動する
+        y -= this.EDITOR_BLOCK_MARGIN;
         if (!(y >= this.EDITOR_PROGRAM_TOP &&
               y <= this.EDITOR_PROGRAM_TOP + this.CODE_LEN * this.BLOCK_SIZE)) {
             return {zone: undefined};

@@ -69,12 +69,12 @@ add_map_2 = function() {
   ];
 
 
-  var init_x = 16 * 6 - 8;
-  var init_y = 16 * 13 - 12;
+  var init_x = 6;
+  var init_y = 12;
   var init_d = PLAYER_DIRECTION_RIGHT;
 
-  var goal_x = 16 * 16;
-  var goal_y = 16 * 3;
+  var goal_x = 16;
+  var goal_y = 3;
 
   return create_map(map2_0, map2_1, map2_col, init_x, init_y, init_d, goal_x, goal_y);
 }

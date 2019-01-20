@@ -165,6 +165,10 @@ var Interp = enchant.Class.create({
         }
         return dest;
     },
+
+    getCurrentFrameCode: function() {
+        return this.currentFrame.code;
+    },
     
     callFunction: function(name, arg) {
         var code = this.program.get(name);
