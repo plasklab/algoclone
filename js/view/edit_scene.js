@@ -153,10 +153,12 @@ var EditorBlockFuncall = enchant.Class.create(EditorBlock, {
     },
 
     clone: function() {
-        return new EditorBlockFuncall(this.scene, this.x, this.y, this.imgsrc);
+        return new EditorBlockFuncall(this.scene, this.x, this.y,
+                                      this.imgsrc, this.name);
     },
 
     getToken: function() {
+        console.log("Funcall: "+this.name);
         return new TokenFuncall(this.name);
     },
 });

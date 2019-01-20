@@ -303,7 +303,8 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
                     case "dia":   imgid = S_DIA; break;
                     case "clover":imgid = S_CLOVER; break;
                     default:
-                        console.log("unknown function name: "+tokens[i].name);
+                        console.log(i);
+                        console.log(token.name);
                     }
                     break;
                 case "Blank": imgid = BLANK; break;
