@@ -405,7 +405,6 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
                 playScene.frameListView.clearPrevHighlighted();
             },
             initToken: function(token, i) {
-                //token.index = i;
             },
         }
 
@@ -435,7 +434,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
             }
         }
     },
-    initControlPanel: function() {		
+    initControlPanel: function() {
         var playScene = this;
 
         // back to the edit scene
