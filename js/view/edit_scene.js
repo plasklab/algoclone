@@ -197,13 +197,38 @@ var EditScene = enchant.Class.create(enchant.Scene, {
          */
 
         /* map */
-        var map = game.createMap(id);
+        loadMap();
+        var mapData = maps[0];
+        var map = new ScrollMap(mapData, MAP, [DIA]);
+        map.setOrigin(0, 0);
+        map.place(this, 0, 0, 10, 16);
         this.map = map;
-        this.addChild(map);
-        this.addChild(new Player(map.init_x,
-                                 map.init_y,
-                                 map.init_direction));
-        this.addChild(new Goal(map.goal_x, map.goal_y));
+//        this.addChild(new Player(mapData.init.x,
+//                                 mapData.init.y,
+//                                 mapData.init.dir));
+//        this.addChild(new Goal(mapData.goal.x, mapData.goal.y));
+
+        var mapOriginBeforeMove;
+        var mapOriginPrev;
+        this.map.ui.addEventListener("touchstart", function(e) {
+            this.clkOffX = e.x - this.x;
+            this.clkOffY = e.y - this.y;
+            mapOriginBeforeMove = this.getOrigin();
+            mapOriginPrev = mapOriginBeforeMove;
+        });
+        this.map.ui.addEventListener("touchmove", function(e) {
+            var dx = e.x - this.clkOffX;
+            var dy = e.y - this.clkOffY;
+            var dc = Math.floor(dx / MAP_TILE_SIZE);
+            var dr = Math.floor(dy / MAP_TILE_SIZE);
+            var oo = mapOriginBeforeMove;
+            var nc = oo.left - dc;
+            var nr = oo.top - dr;
+            if (nr != mapOriginPrev.top || nc != mapOriginPrev.left) {
+                this.setOrigin(nc, nr);
+                mapOriginPrev = this.getOrigin();
+            }
+        });
         
         const PALETTE_CONTENTS = [
             [EditorBlock, ADVANCE, new TokenForward()],
