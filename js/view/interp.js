@@ -135,9 +135,9 @@ var ArgFrame = enchant.Class.create(ExecFrame, {
 //   関数や引数のフレーム内のコードを使う．
 //   コードの範囲には開き括弧と閉じ括弧を含めない．
 var PArgFrame = enchant.Class.create(ExecFrame, {
-    initialize: function(start, slink, owner) {
+    initialize: function(start, end, slink, owner) {
         ExecFrame.call(this, "PArgFrame", slink, owner,
-                       owner.code, start, owner.findEnd(start));
+                       owner.code, start, end);
     },
 });
 
@@ -238,18 +238,28 @@ var Interp = enchant.Class.create({
                 this.callFunction(name, arg);
                 this.callbacks.pushVisibleFrame();
                 break;
+            case "FuncallE":
+                var name = token.name;
+                var arg = {
+                    start: frame.pc,
+                    end: frame.pc,
+                    owner: frame.owner,
+                    slink: frame
+                };
+                this.callFunction(name, arg);
+                this.callbacks.pushVisibleFrame();
+                break;
             case "Param":
                 var arg = this.findArg();
                 if (token.createOwnFrame) {
-		    console.log("start = "+arg.start+" end = "+arg.end);
                     var code = this.cloneCode(arg.owner.code,
                                               arg.start,
 					      arg.end - arg.start);
                     this.pushFrame(new ArgFrame(code, frame.slink));
                     this.callbacks.pushVisibleFrame();
                 } else
-                    this.pushFrame(new PArgFrame(arg.start, arg.slink,
-                                                 arg.owner));
+                    this.pushFrame(new PArgFrame(arg.start, arg.end,
+                                                 arg.slink, arg.owner));
                 break;
             }
         }
