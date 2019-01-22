@@ -336,6 +336,13 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
                     case -1: break;
                     }
                     playScene.map.redraw();
+                    if (playScene.map.isPlayerInGoalPoint()) {
+                        // clear.
+                        playScene.gameClear();
+                    }
+                } else {
+                    // Game over.
+                    playScene.gameFailed();
                 }
             },
             right: function() {
@@ -513,7 +520,16 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
     },
 
     end: function() {
-        // Game clear.
+        if (this.map.isPlayerInGoalPoint()) {
+            this.gameClear();
+        } else {
+            this.gameFailed();
+        }
+    },
+
+    gameClear: function() {
+        console.log("CLEAR");
+        this.interrupted = true;
         var playScene = this;
         var gameClearScene = new Scene();
         var clearImg = new Sprite(267, 48);
@@ -529,31 +545,10 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
             playScene.updateControlPanel();
         });
         game.pushScene(gameClearScene);
-        /*
-        if (this.playerState.x == this.map.goal_x &&
-            this.playerState.y == this.map.goal_y) {
-                // Game clear.
-                var gameClearScene = new Scene();
-                var clearImg = new Sprite(267, 48);
-                clearImg.x = 267; clearImg.y = 48;
-                clearImg.scaleX = 2;
-                clearImg.scaleY = 2;
-                clearImg.image = game.assets[CLEAR];
-                gameClearScene.addChild(clearImg);
-                gameClearScene.addEventListener("touchstart", function() {
-                    game.popScene();
-                    playScene.autoPlaying = false;
-                    playScene.programHasFinished = true;
-                    playScene.updateControlPanel();
-                });
-                game.pushScene(gameClearScene);
-        } else {
-            // Game over.
-            this.gameFailed();
-        }*/
     },
 
     gameFailed: function() {
+        this.interrupted = true;
         var playScene = this;
         var gameOverScene = new Scene();
         var gameOverImg = new Sprite(189, 97);

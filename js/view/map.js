@@ -98,6 +98,7 @@ var ScrollMap = enchant.Class.create({
         this.mapData = mapData;
 
         this.ground = mapData.ground;  // array(row) of array(col)
+        this.goal = mapData.goal;
         this.gems = mapData.getGems();
         this.player = mapData.getInitPos();
 
@@ -241,12 +242,26 @@ var ScrollMap = enchant.Class.create({
             this.gems.push([]);
         for (var i = this.gems[y].length; i < x + 1; i++)
             this.gems[y].push(-1);
+        
         this.gems[y][x] = gem;
+    },
+
+    isPlayerInGoalPoint: function() {
+        return (this.player.x == this.goal.x) &&
+               (this.player.y == this.goal.y);
     },
 });
 
 var isValidPlayerPos = function(x, y, ground) {
-    return true; // TODO:
+    var validTiles = [
+        6, // road
+        27, // goal
+    ];
+    var val = ground[y][x];
+    for (var i = 0; i < validTiles.length; i++) {
+        if (validTiles[i] == val) return true;
+    }
+    return false;
 };
 
 var rotateLeft = function(dir) {
