@@ -10,6 +10,11 @@ const MODE_FROM_PALETTE = "mode from palette";
 const MODE_IN_PROGRAM   = "mode in program";
 const MODE_FROM_PROGRAM = "mode from program";
 
+const AFTER_BLOCK = "before block";
+const REPLACE_BLOCK = "replace block";
+const NO_HIGHLIGHT = "no highlight"
+const INSERT_OFFSET = 16;
+
 var EditorBlock = enchant.Class.create(enchant.Group, {
     initialize: function(scene, x, y, imgsrc, token) {
         enchant.Group.call(this);
@@ -34,10 +39,12 @@ var EditorBlock = enchant.Class.create(enchant.Group, {
                 this.mode == MODE_FROM_PROGRAM) {
                 this.x = e.x - this.clkOffX;
                 this.y = e.y - this.clkOffY;
+                this.scene.highlightLocation(this.getCenter().x,this.getCenter().y);
             }
         });
 
         this.addEventListener("touchend", function(e) {
+            this.scene.highlightAtDrop.remove();
             if (this.mode == MODE_FROM_PALETTE ||
                 this.mode == MODE_FROM_PROGRAM) {
                 this.scene.dropBlock(this,
@@ -53,7 +60,7 @@ var EditorBlock = enchant.Class.create(enchant.Group, {
             if (this.mode == MODE_IN_PALETTE) {
                 this.mode = MODE_FROM_PALETTE;
                 var b = this.clone();
-                this.scene.addChild(b);
+                this.scene.insertBefore(b, this.scene.highlightAtDrop);
             } else if (this.mode == MODE_IN_PROGRAM)
                 this.mode = MODE_FROM_PROGRAM;
             this.clkOffX = e.x - this.x;
@@ -175,6 +182,43 @@ var FillSquare = enchant.Class.create(enchant.Sprite, {
     }
 });
 
+var HighlightAtDrop = enchant.Class.create(enchant.Sprite, {
+    initialize: function(scene) {
+        enchant.Sprite.call(this, 34, 34);
+        this.scene = scene;
+        this.location = undefined;
+        this.x = undefined;
+        this.y = undefined;
+        this.dropType = NO_HIGHLIGHT;
+        this.image = game.assets[REPLACE];
+        this.visible = false;
+        this.scene.addChild(this);
+    },
+
+    move: function(scene, x, y, dropType) {
+        this.scene = scene;
+        this.x = x - 1;
+        this.y = y - 1;
+        if (this.dropType == dropType)
+            return;
+        this.dropType = dropType;
+        if (this.dropType == AFTER_BLOCK) {
+            this.image = game.assets[INSERT];
+            this.visible = true;
+        } else if (this.dropType == REPLACE_BLOCK) {
+            this.image = game.assets[REPLACE];
+            this.visible = true;
+        } else {
+            this.visible = false;
+        }
+    },
+
+    remove: function() {
+        this.dropType = NO_HIGHLIGHT;
+        this.visible = false;
+    }
+});
+
 var DrawImage = enchant.Class.create(enchant.Sprite, {
     initialize: function(scene, x, y, width, height, imgsrc) {
         enchant.Sprite.call(this, width, height);
@@ -259,7 +303,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 
             baseline += this.BLOCK_SIZE + this.EDITOR_MARGIN;
         }
-                              
+
         /* palette zone */
         var paletteBackground = new FillSquare(this.PALETTE_OFFSET_X - 4,
                                                this.PALETTE_OFFSET_Y - 4,
@@ -292,6 +336,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
                 });
             },
         }))(this);
+        this.highlightAtDrop = new HighlightAtDrop(this, paletteBackground);
         this.addChild(playButton);
     },
 
@@ -328,6 +373,29 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         }
         
         return {zone: undefined};
+    },
+
+    highlightLocation: function(x, y) {
+        var pos = this.getPositionByLocation(x, y);
+
+        if (pos.zone == undefined || pos.zone == PALETTE_ZONE) {
+            this.highlightAtDrop.remove();
+        } else if (pos.zone == PROGRAM_ZONE) {
+            var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * pos.funcNo;
+            if (pos.offset < this.BLOCK_SIZE / 4) {
+                // insert before
+                var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * (pos.index - 1) + INSERT_OFFSET;
+                this.highlightAtDrop.move(this, x, y, AFTER_BLOCK);
+            } else if (pos.offset > this.BLOCK_SIZE - this.BLOCK_SIZE / 4) {
+                //insert after
+                var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * pos.index + INSERT_OFFSET;
+                this.highlightAtDrop.move(this, x, y, AFTER_BLOCK);
+            } else {
+                // replace block
+                var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * pos.index;
+                this.highlightAtDrop.move(this, x, y, REPLACE_BLOCK);
+            }
+        }
     },
 
     dropBlock: function(block, x, y) {
