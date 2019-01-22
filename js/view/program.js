@@ -69,6 +69,17 @@ var TokenFuncall = enchant.Class.create(Token, {
     }
 });
 
+var TokenFuncallE = enchant.Class.create(Token, {
+    initialize: function(name) {
+        Token.call(this, "FuncallE");
+        this.name = name;
+    },
+
+    clone: function() {
+        return new TokenFuncallE(this.name);
+    }
+});
+
 var TokenBlockEnd = enchant.Class.create(Token, {
     initialize: function() {
         Token.call(this, "End");

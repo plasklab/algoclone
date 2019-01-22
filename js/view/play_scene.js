@@ -528,7 +528,6 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
     },
 
     gameClear: function() {
-        console.log("CLEAR");
         this.interrupted = true;
         var playScene = this;
         var gameClearScene = new Scene();
