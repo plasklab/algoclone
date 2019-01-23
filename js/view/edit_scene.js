@@ -247,9 +247,9 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         /* map */
         loadMap();
         var mapData = maps[0];
-        var map = new ScrollMap(mapData, MAP, [DIA]);
+        var map = new ScrollMap(mapData, MAP, [COIN]);
         map.setOrigin(0, 0);
-        map.place(this, 0, 0, 10, 16);
+        map.place(this, 0, 0, 16, 16);
         this.map = map;
 //        this.addChild(new Player(mapData.init.x,
 //                                 mapData.init.y,
