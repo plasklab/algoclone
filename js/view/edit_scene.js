@@ -10,9 +10,14 @@ const MODE_FROM_PALETTE = "mode from palette";
 const MODE_IN_PROGRAM   = "mode in program";
 const MODE_FROM_PROGRAM = "mode from program";
 
-const AFTER_BLOCK = "before block";
+const ACTION_INSERT_BEFORE = "insert before";
+const ACTION_INSERT_AFTER  = "insert after";
+const ACTION_PUT           = "put"
+const ACTION_UNDO          = "undo"
+const EDIT_INSERT_BLOCK_EDGE = 8;
+const AFTER_BLOCK   = "after block";
 const REPLACE_BLOCK = "replace block";
-const NO_HIGHLIGHT = "no highlight"
+const NO_HIGHLIGHT  = "no highlight";
 const INSERT_OFFSET = 16;
 
 var EditorBlock = enchant.Class.create(enchant.Group, {
@@ -44,7 +49,6 @@ var EditorBlock = enchant.Class.create(enchant.Group, {
         });
 
         this.addEventListener("touchend", function(e) {
-            this.scene.highlightAtDrop.remove();
             if (this.mode == MODE_FROM_PALETTE ||
                 this.mode == MODE_FROM_PROGRAM) {
                 this.scene.dropBlock(this,
@@ -400,54 +404,81 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         return {zone: undefined};
     },
 
+    canInsert: function(code, index) {
+        for (var i = index; i < code.length; i++)
+            if (code[i] == undefined)
+                return true;
+        return false;
+    },
+    
+    actionIfDrop: function(code, index, offset) {
+        if (offset < EDIT_INSERT_BLOCK_EDGE) {
+            if ((index == 0 && code[index] != undefined )||
+                (code[index - 1] != undefined && code[index] != undefined) &&
+                this.canInsert(code, index))
+                return ACTION_INSERT_BEFORE;
+        } else if (offset >= this.BLOCK_SIZE - EDIT_INSERT_BLOCK_EDGE) {
+            if (index < code.length - 1 &&
+                code[index] != undefined && code[index + 1] != undefined &&
+                this.canInsert(code, index + 1))
+                return ACTION_INSERT_AFTER;
+        }
+
+        if (code[index] == undefined)
+            return ACTION_PUT;
+
+        return ACTION_UNDO;
+    },
+    
     highlightLocation: function(x, y) {
         var pos = this.getPositionByLocation(x, y);
 
-        if (pos.zone == undefined || pos.zone == PALETTE_ZONE) {
-            this.highlightAtDrop.remove();
-        } else if (pos.zone == PROGRAM_ZONE) {
-            var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * pos.funcNo;
-            if (pos.offset < this.BLOCK_SIZE / 4) {
-                // insert before
-                var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * (pos.index - 1) + INSERT_OFFSET;
+        if (pos.zone == PROGRAM_ZONE) {
+            var x = (this.EDITOR_X +
+                     (this.BLOCK_SIZE + this.EDITOR_MARGIN) * pos.funcNo);
+            var code = this.editingProgram[pos.funcNo];
+            var action = this.actionIfDrop(code, pos.index, pos.offset);
+            if (action == ACTION_INSERT_BEFORE) {
+                var y = (this.EDITOR_PROGRAM_TOP
+                         + this.BLOCK_SIZE * (pos.index - 1) + INSERT_OFFSET);
                 this.highlightAtDrop.move(this, x, y, AFTER_BLOCK);
-            } else if (pos.offset > this.BLOCK_SIZE - this.BLOCK_SIZE / 4) {
-                //insert after
-                var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * pos.index + INSERT_OFFSET;
+            } else if (action == ACTION_INSERT_AFTER) {
+                var y = (this.EDITOR_PROGRAM_TOP
+                         + this.BLOCK_SIZE * pos.index + INSERT_OFFSET);
                 this.highlightAtDrop.move(this, x, y, AFTER_BLOCK);
-            } else {
-                // replace block
+            } else if (action == ACTION_PUT) {
                 var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * pos.index;
                 this.highlightAtDrop.move(this, x, y, REPLACE_BLOCK);
-            }
-        }
+            } else
+                this.highlightAtDrop.remove();
+        } else
+            this.highlightAtDrop.remove();
     },
 
     dropBlock: function(block, x, y) {
+        this.scene.highlightAtDrop.remove();
         var pos = this.getPositionByLocation(x, y);
-
         if (pos.zone == undefined)
             block.undoMoving();
         else if (pos.zone == PALETTE_ZONE)
             block.remove();
         else if (pos.zone == PROGRAM_ZONE) {
-            if (pos.offset < this.BLOCK_SIZE / 4)
+            var code = this.editingProgram[pos.funcNo];
+            var action = this.actionIfDrop(code, pos.index, pos.offset);
+            if (action == ACTION_INSERT_BEFORE)
                 this.insertBlock(pos.funcNo, pos.index, block);
-            else if (pos.offset > this.BLOCK_SIZE - this.BLOCK_SIZE / 4)
+            else if (action == ACTION_INSERT_AFTER)
                 this.insertBlock(pos.funcNo, pos.index + 1, block);
-            else
+            else if (action == ACTION_PUT)
                 this.putBlock(pos.funcNo, pos.index, block);
+            else if (action == ACTION_UNDO)
+                block.undoMoving();
         } else
             block.undoMoving();
     },
     
     putBlock: function(funcNo, index, block) {
         var code = this.editingProgram[funcNo];
-        if (code[index]) {
-            block.undoMoving();
-            return;
-        }
-
         var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
         var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * index;
         block.put(x, y, code, index);
@@ -455,13 +486,15 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 
     insertBlock: function(funcNo, index, block) {
         var code = this.editingProgram[funcNo];
-        if (code[this.CODE_LEN - 1]) {
-            block.undoMoving();
-            return;
-        }
+
+        // There should be at least one blank because insertBlock
+        // is called only if actionIfDrop made decision of insert.
+        var blankIndex = index;
+        while (code[blankIndex])
+            blankIndex++;
 
         var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
-        for (var i = this.CODE_LEN - 2; i >= index; i--) {
+        for (var i = blankIndex - 1; i >= index; i--) {
             var slideBlock = code[i];
             if (slideBlock) {
                 var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * (i + 1);
