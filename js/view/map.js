@@ -15,18 +15,6 @@ var MapData = function(name, ground, gems, init, goal) {
         this.gems = gems;
     this.init = init;  // {x, y, dir}
     this.goal = goal;  // {x, y}
-
-    this.getGems = function() {
-        var copied = [];
-        for (var i = 0; i < this.gems.length; i++) {
-            copied.push(this.gems[i].slice(0));
-        }
-        return copied;
-    }
-
-    this.getInitPos = function() {
-        return Object.assign({}, this.init);
-    }
 }
 
 var ScrollMap = enchant.Class.create({
@@ -99,8 +87,8 @@ var ScrollMap = enchant.Class.create({
 
         this.ground = mapData.ground;  // array(row) of array(col)
         this.goal = mapData.goal;
-        this.gems = mapData.getGems();
-        this.player = mapData.getInitPos();
+        this.gems = copyGems(mapData.gems);
+        this.player = Object.assign({}, mapData.init);
 
         // Player action
         this.player.moveForward = function() {
@@ -251,6 +239,14 @@ var ScrollMap = enchant.Class.create({
                (this.player.y == this.goal.y);
     },
 });
+
+var copyGems = function(gems) {
+    var copied = [];
+    for (var i = 0; i < gems.length; i++) {
+        copied.push(gems[i].slice(0));
+    }
+    return copied;
+};
 
 var isValidPlayerPos = function(x, y, ground) {
     var validTiles = [
