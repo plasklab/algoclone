@@ -42,20 +42,29 @@ const HIGHLIGHT_NONE = 0;
 const HIGHLIGHT_ON_1 = 1;
 const HIGHLIGHT_ON_2 = 2;
 
-var ExecBlock = enchant.Class.create(enchant.Sprite, {
+var ExecBlock = enchant.Class.create(enchant.Group, {
     initialize: function(scene, frameView, index, imgsrc) {
-        enchant.Sprite.call(this, 32, 32);
+        enchant.Group.call(this);
+
         this.scene = scene;
         this.frameView = frameView;
-        this.image = game.assets[imgsrc];
-        this.imgsrc = imgsrc;
         this.index = index;
+        this.imgsrc = imgsrc;
 
-        this.backgroundColor = "white";
-        this.isHighlight = false;
+        this.width = 32;
+        this.height = 32;
+
+        this.blockImg = new enchant.Sprite(32, 32);
+        this.blockImg.image = game.assets[imgsrc];
+        this.addChild(this.blockImg);
         
+        this.highlight = new enchant.Sprite(32, 32);
+        this.highlight.visible = false;
+        this.addChild(this.highlight);
+
         this.scene.addChild(this);
     },
+    
     getBlockName: function() {
         return this.imgsrc;
     },
@@ -63,13 +72,18 @@ var ExecBlock = enchant.Class.create(enchant.Sprite, {
     setHighlight: function(val) {
         switch (val) {
         case HIGHLIGHT_NONE:
-            this.backgroundColor = "white";
+            this.highlight.backgroundColor = "white";
+            this.highlight.visible = false;
             break;
         case HIGHLIGHT_ON_1:
-            this.backgroundColor = "yellow";
+            this.highlight.backgroundColor = "yellow";
+            this.highlight.visible = true;
+            this.highlight.opacity = 0.5;
             break;
         case HIGHLIGHT_ON_2:
-            this.backgroundColor = "#CCCC00";
+            this.highlight.backgroundColor = "#CCCC00";
+            this.highlight.visible = true;
+            this.highlight.opacity = 0.5;
             break;
         }
     },
@@ -144,7 +158,7 @@ var FunctionFrameView = enchant.Class.create({
                 case "Blank": imgid = BLANK; break;
                 default: debugprint("INVALID TOKEN: "+tokens[i]);
             }
-            var block = new ExecBlock(this.scene, this, i, /*headX, headY,*/ imgid);
+            var block = new ExecBlock(this.scene, this, i, imgid);
             tokens[i].block = block;
             tokens[i].index = i;
             tokens[i].frameIndex = this.index;
@@ -301,6 +315,7 @@ var FrameListView = enchant.Class.create({
         this.highlightInfoStack.push(highlightInfo);
 
         token.frameView.focusBlock(token.index);
+        console.log(token.block);
     },
 });
 
