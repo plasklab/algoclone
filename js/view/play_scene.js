@@ -134,23 +134,30 @@ var FunctionFrameView = enchant.Class.create({
         for (var i = 0; i < tokens.length; i++) {
             var imgid = undefined;
             switch (tokens[i].type) {
-                case "Forward": imgid = ADVANCE; break;
-                case "Left": imgid = LEFT; break;
-                case "Right": imgid = RIGHT; break;
-                case "Param": imgid = ARG; break;
-                case "Loop": imgid = BSTART; break;
-                case "End": imgid = BEND; break;
-                case "Funcall": {
-                    switch (tokens[i].name) {
-                        case "spead": imgid = S_SPEAD; break;
-                        case "heart": imgid = S_HEART; break;
-                        case "dia":   imgid = S_DIA; break;
-                        case "clover":imgid = S_CLOVER; break;
-                        default: console.log("unknown function name: "+tokens[i].name);
-                    }
-                } break;
-                case "Blank": imgid = BLANK; break;
-                default: debugprint("INVALID TOKEN: "+tokens[i]);
+            case "Forward": imgid = ADVANCE; break;
+            case "Left": imgid = LEFT; break;
+            case "Right": imgid = RIGHT; break;
+            case "Param": imgid = ARG; break;
+            case "Loop": imgid = BSTART; break;
+            case "End": imgid = BEND; break;
+            case "Funcall":
+                switch (tokens[i].name) {
+                case "spead": imgid = S_SPEAD; break;
+                case "heart": imgid = S_HEART; break;
+                case "dia":   imgid = S_DIA; break;
+                case "clover":imgid = S_CLOVER; break;
+                }
+                break;
+            case "FuncallE":
+                switch (tokens[i].name) {
+                case "spead": imgid = N_SPEAD; break;
+                case "heart": imgid = N_HEART; break;
+                case "dia":   imgid = N_DIA; break;
+                case "clover":imgid = N_CLOVER; break;
+                }
+                break;
+            case "Blank": imgid = BLANK; break;
+            default: debugprint("INVALID TOKEN: "+tokens[i]);
             }
             var block = new ExecBlock(this.scene, this, i, headX, headY, imgid);
             tokens[i].block = block;

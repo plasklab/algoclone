@@ -24,6 +24,7 @@ var ExecFrame = enchant.Class.create({
             case "Left":
             case "Right":
             case "Param":
+            case "FuncallE":
             case "End":
                 this.pc++;
                 break;

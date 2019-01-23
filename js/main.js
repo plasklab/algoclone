@@ -17,10 +17,14 @@ const SPEAD   = "../img/spead.png";
 const HEART   = "../img/heart.png";
 const DIA     = "../img/dia.png";
 const CLOVER  = "../img/clover.png";
-const S_SPEAD = "../img/spead_start.png";
-const S_HEART = "../img/heart_start.png";
-const S_DIA   = "../img/dia_start.png";
-const S_CLOVER= "../img/clover_start.png";
+const S_SPEAD = "../img/spead_func.png";
+const S_HEART = "../img/heart_func.png";
+const S_DIA   = "../img/dia_func.png";
+const S_CLOVER= "../img/clover_func.png";
+const N_SPEAD = "../img/spead_noargs.png";
+const N_HEART = "../img/heart_noargs.png";
+const N_DIA   = "../img/dia_noargs.png";
+const N_CLOVER= "../img/clover_noargs.png";
 const ARG     = "../img/arg.png";
 const BLANK   = "../img/blank_block.png";
 const PLAY    = "../img/play.png";
@@ -33,9 +37,12 @@ const REPLACE = "../img/replace_highlight.png";
 window.onload = function() {
   game = new Core(WIDTH, HEIGHT);
   game.fps = 60;
-  game.preload(PLAYER, MAP, GOAL, ADVANCE, RIGHT, LEFT, LSTART, LEND, BSTART, BEND,
-    SPEAD, HEART, DIA, CLOVER, S_SPEAD, S_HEART, S_DIA, S_CLOVER, ARG, BLANK, PLAY,
-    CLEAR, GAMEOVER, COIN, INSERT, REPLACE);
+    game.preload(PLAYER, MAP, GOAL, ADVANCE,
+		 RIGHT, LEFT, LSTART, LEND, BSTART, BEND,
+		 SPEAD, HEART, DIA, CLOVER,
+		 S_SPEAD, S_HEART, S_DIA, S_CLOVER,
+		 N_SPEAD, N_HEART, N_DIA, N_CLOVER,
+		 ARG, BLANK, PLAY, CLEAR, GAMEOVER, COIN, INSERT, REPLACE);
 
   game.onload = function() {
     var main_menu = new MainMenu();
