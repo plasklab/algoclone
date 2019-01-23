@@ -38,6 +38,10 @@ debugprint = function(s) {
     console.log("play scene: "+s);
 };
 
+const HIGHLIGHT_NONE = 0;
+const HIGHLIGHT_ON_1 = 1;
+const HIGHLIGHT_ON_2 = 2;
+
 var ExecBlock = enchant.Class.create(enchant.Sprite, {
     initialize: function(scene, frameView, index, offsetX, offsetY, imgsrc) {
         enchant.Sprite.call(this, 32, 32);
@@ -65,23 +69,30 @@ var ExecBlock = enchant.Class.create(enchant.Sprite, {
             return 0;
         }
     }*/
-    setHighlight: function(on) {
-        if (on) {
-            this.backgroundColor = "yellow";
-        } else {
+    setHighlight: function(val) {
+        switch (val) {
+        case HIGHLIGHT_NONE:
             this.backgroundColor = "white";
+            break;
+        case HIGHLIGHT_ON_1:
+            this.backgroundColor = "yellow";
+            break;
+        case HIGHLIGHT_ON_2:
+            this.backgroundColor = "#CCCC00";
+            break;
         }
     }
 });
 
 var FunctionFrameView = enchant.Class.create({
-    initialize: function(scene, frameView, index, x, y, fname, tokens) {
+    initialize: function(scene, frameView, index, x, y, fname, tokens, maxLength) {
         this.scene = scene;
         this.frameView = frameView;
         this.index = index;
         this.x = x;
         this.y = y;
         this.fname = fname;
+        this.maxLength = maxLength;
         this.width = frameView.BLOCK_SIZE + frameView.MARGIN * 2;
         this.bodyY = y + frameView.MARGIN + frameView.BLOCK_SIZE;
         this.bodyHeight = tokens.length * frameView.BLOCK_SIZE + frameView.MARGIN * 2;
@@ -157,7 +168,7 @@ var FunctionFrameView = enchant.Class.create({
 });
 
 var FrameListView = enchant.Class.create({
-    initialize: function(scene, x, y, tokens) {
+    initialize: function(scene, x, y, tokens, maxLength) {
         this.scene = scene;
 
         this.x = x;
@@ -168,15 +179,17 @@ var FrameListView = enchant.Class.create({
         this.BLOCK_NUM = 12;
         this.DIST_BITWEEN_FRAMES = 8;
 
-        this.frameViewList = [];
-        this.frameViewList.push(new FunctionFrameView(this.scene, this, 0, x, y, "main", tokens));
+        this.maxLength = maxLength;
 
+        this.frameViewList = [];
+        this.frameViewList.push(new FunctionFrameView(this.scene, this, 0, x, y, "main", tokens, this.maxLength));
+
+        this.shouldPopHighlightInfoStack = true;
         this.highlightInfoStack = [];
         this.highlightInfoStack.top = function() {
             if (this.length == 0) return undefined;
             return this[this.length-1];
         };
-        this.prevHighlightedToken = undefined;
     },
     pushFunctionFrame: function(fname, tokens) {
         // if (fname == undefined) -> ArgFrame, otherwise FunctionFrame
@@ -190,8 +203,10 @@ var FrameListView = enchant.Class.create({
             newFrameViewPosX,
             newFrameViewPosY,
             fname,
-            tokens
+            tokens,
+            this.maxLength,
             ));
+        this.shouldPopHighlightInfoStack = false;
     },
     pop: function() {
         var poped = this.frameViewList.pop();
@@ -199,95 +214,63 @@ var FrameListView = enchant.Class.create({
         if (poped.fname == undefined) {// 消す対象がArgFrameのとき
             var highlightInfo = this.highlightInfoStack.top();
             if (highlightInfo != undefined) {
-                highlightInfo.token.block.setHighlight(false);
+                highlightInfo.token.block.setHighlight(HIGHLIGHT_NONE);
             }
             return;
         } else { // 消す対象がFunctionFrameのとき highlightInfoから関数をpopするまでpopし続ける
             while (true) {
-                var highlightInfo = this.highlightInfoStack.pop();
+                var highlightInfo = this.highlightInfoStack.top();
                 if (highlightInfo == undefined) break; // mainが終わったらundefinedになる
-                highlightInfo.token.block.setHighlight(false);
-                if (highlightInfo.token.type == "Funcall") break;
+                if (highlightInfo.frameIndex == this.frameViewList.length-1) {
+                    highlightInfo.token.block.setHighlight(HIGHLIGHT_ON_1);
+                    break;
+                }
+                highlightInfo.token.block.setHighlight(HIGHLIGHT_NONE);
+                this.highlightInfoStack.pop();
             }
         }
+        this.shouldPopHighlightInfoStack = true;
     },
     remove: function() {
         for (var i = 0; i < this.frameViewList.length; i++) {
             this.frameViewList[i].remove();
         }
     },
+
     setHighlight: function(token) {
-        // 基本的には，前回の呼び出しで与えられたtokenのハイライトを消し，
-        // 今回の呼び出しで与えられたtokenをハイライトする
-
-        // ただし，Paramはその実引数の実行が終わるまで，
-        // Funcallは呼び出した関数がリターンするまでハイライトしなければならない
-        // このあたりはhighlightInfoStackで管理する．
-
-        // 前回のtokenのハイライトを消す
-        this.clearPrevHighlighted();
-
         var currentFrameIndex = this.frameViewList.length - 1;
+        var highlightInfo = {
+            token: token,
+            frameIndex: currentFrameIndex,
+        };
 
-        // ParamとFuncallのハイライトを消すべきならば消す
-        if (this.highlightInfoStack.length != 0) {
-            var top = this.highlightInfoStack[this.highlightInfoStack.length - 1];
-            switch (top.token.type) {
-                case "Param": {
-                    if (!top.token.createOwnFrame && token.frameIndex == currentFrameIndex) {
-                        top.token.block.setHighlight(false);
-                        this.highlightInfoStack.pop();
-                    }
-                } break;
-                case "Funcall": {
-                    if (top.frameIndex == currentFrameIndex) {
-                        top.token.block.setHighlight(false);
-                        this.highlightInfoStack.pop();
-                    }
-                } break;
-                default: 
-                    console.assert("highlightInfoStack: unexpected token type: "+top.token.type);
+        var top = this.highlightInfoStack.top();
+        if (top != undefined) {
+            if (this.shouldPopHighlightInfoStack) {
+                top.token.block.setHighlight(HIGHLIGHT_NONE);
+                this.highlightInfoStack.pop();
+            } else {
+                top.token.block.setHighlight(HIGHLIGHT_ON_2);
             }
         }
 
-        // ParamとFuncallはhighlightInfoStackにpushしてハイライト
-        // 他はprevHighlightedTokenに記録&ハイライト
-        switch (token.type) {
-            case "Param": {
-                this.highlightInfoStack.push({
-                    token: token,
-                    frameIndex: currentFrameIndex,
-                });
-                token.block.setHighlight(true);
-            } break;
-            case "Funcall": {
-                this.highlightInfoStack.push({
-                    token: token,
-                    frameIndex: currentFrameIndex,
-                });
-                token.block.setHighlight(true);
-            } break;
-            case "Blank": 
-            case "Forward":
-            case "Left":
-            case "Right":
-            case "Loop":
-            case "End": {
-                token.block.setHighlight(true);
-                this.prevHighlightedToken = token;
-            } break;
-            default: {
-                console.assert("highlight: unexpected token type: "+token.type);
+        var top = this.highlightInfoStack.top();
+        if (top != undefined) {
+            if (top.token.type == "Param" && top.frameIndex == token.frameIndex) {
+                top.token.block.setHighlight(HIGHLIGHT_NONE);
+                this.highlightInfoStack.pop();
             }
         }
+
+        if (token.type == "Param") {
+            this.shouldPopHighlightInfoStack = false;
+        } else {
+            this.shouldPopHighlightInfoStack = true;
+        }
+
+        token.block.setHighlight(HIGHLIGHT_ON_1);
+        this.highlightInfoStack.push(highlightInfo);
     },
-
-    clearPrevHighlighted: function() {
-        if (this.prevHighlightedToken != undefined) {
-            this.prevHighlightedToken.block.setHighlight(false);
-            this.prevHighlightedToken = undefined;
-        }
-    }
 });
 
 var PlayScene = enchant.Class.create(enchant.Scene, {
@@ -308,6 +291,8 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         this.controlPanelOffsetX = 32;
         this.controlPanelOffsetY = map.y + map.height + 32;
         this.initControlPanel();
+
+        this.maxLengthOfFrameList = 8;
 
         var playScene = this;
         this.callbacks = {
@@ -402,7 +387,6 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
             },
             popVisibleFrame: function() {
                 playScene.frameListView.pop();
-                playScene.frameListView.clearPrevHighlighted();
             },
             initToken: function(token, i) {
             },
@@ -545,7 +529,8 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         this.frameListView = new FrameListView(this,
             map.x + map.width + 10,
             16,
-            mainCode);
+            mainCode,
+            this.maxLengthOfFrameList);
 
         this.updateControlPanel();
     },
