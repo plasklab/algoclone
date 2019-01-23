@@ -513,7 +513,6 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
     },
 
     gameClear: function() {
-        this.interrupted = true;
         var playScene = this;
         var gameClearScene = new Scene();
         var clearImg = new Sprite(267, 48);
@@ -532,7 +531,6 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
     },
 
     gameFailed: function() {
-        this.interrupted = true;
         var playScene = this;
         var gameOverScene = new Scene();
         var gameOverImg = new Sprite(189, 97);
