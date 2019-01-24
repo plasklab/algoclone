@@ -87,6 +87,10 @@ var ExecBlock = enchant.Class.create(enchant.Group, {
             break;
         }
     },
+
+    setVisible: function(on) {
+        this.blockImg.visible = on;
+    },
 });
 
 var FunctionFrameView = enchant.Class.create({
@@ -173,17 +177,17 @@ var FunctionFrameView = enchant.Class.create({
         var blockSize = 32;
         var blockIndex = 0;
         for (; blockIndex < this.currentHeadBlockIndex; blockIndex++) {
-            this.blocks[blockIndex].visible = false;
+            this.blocks[blockIndex].setVisible(false);
         }
-        for (var i = 0; i < this.numOfDisplayBlocks; i++, blockIndex++) {
+        for (var i = 0; i < this.numOfDisplayBlocks && i < this.blocks.length; i++, blockIndex++) {
             var x = headX;
             var y = headY + i * blockSize;
             this.blocks[blockIndex].x = x;
             this.blocks[blockIndex].y = y;
-            this.blocks[blockIndex].visible = true;
+            this.blocks[blockIndex].setVisible(true);
         }
         for (; blockIndex < this.blocks.length; blockIndex++) {
-            this.blocks[blockIndex].visible = false;
+            this.blocks[blockIndex].setVisible(false);
         }
     },
     focusBlock: function(index) {

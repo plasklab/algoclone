@@ -289,7 +289,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
             [EditorBlockFuncall, S_HEART,  "heart"],
             [EditorBlockFuncall, S_DIA,    "dia"],
             [EditorBlockFuncall, S_CLOVER, "clover"],
-            [EditorBlock, ARG,     new TokenParam()]
+            [EditorBlock, ARG,     new TokenParam((gameMode == "argf"))]
         ];
         this.PALETTE_OFFSET_X = map.x + map.width + 10;
         this.PALETTE_OFFSET_Y = 10;
