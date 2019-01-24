@@ -169,29 +169,29 @@ var Interp = enchant.Class.create({
     getCurrentFrameCode: function() {
         return this.currentFrame.code;
     },
-    /*
+
     callFunction: function(name, arg) {
-        var code = this.program.get(name);
-        code = this.cloneCode(code);
-        this.pushFrame(new FunctionFrame(name, code, arg));
-    },
-    */
-    /* 下のcallFunctionは仮引数を実引数に置き換える */
-    callFunction:function(name, arg) {
-        var code = this.program.get(name);
-        if (name != "main" && arg.start != arg.end) {
-            for (var i = 0; i < code.length; i++) {
-                if (code[i].type == "Param") {
-                    var ownerCode = arg.owner.code;
-                    code.splice(i, 1);
-                    for (var j = arg.end - 1; j >= arg.start; j--) {
-                        code.splice(i, 0, ownerCode[j]);
+        if (gameMode == "subst") {
+            /* 仮引数を実引数に置き換える */
+            var code = this.program.get(name);
+            if (name != "main" && arg.start != arg.end) {
+                for (var i = 0; i < code.length; i++) {
+                    if (code[i].type == "Param") {
+                        var ownerCode = arg.owner.code;
+                        code.splice(i, 1);
+                        for (var j = arg.end - 1; j >= arg.start; j--) {
+                            code.splice(i, 0, ownerCode[j]);
+                        }
                     }
                 }
             }
+            code = this.cloneCode(code);
+            this.pushFrame(new FunctionFrame(name, code, arg));
+        } else {
+            var code = this.program.get(name);
+            code = this.cloneCode(code);
+            this.pushFrame(new FunctionFrame(name, code, arg));
         }
-        code = this.cloneCode(code);
-        this.pushFrame(new FunctionFrame(name, code, arg));
     },
 
     pushFrame: function(frame) {
