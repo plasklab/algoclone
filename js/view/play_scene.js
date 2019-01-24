@@ -185,7 +185,6 @@ var FunctionFrameView = enchant.Class.create({
             this.blocks[blockIndex].x = x;
             this.blocks[blockIndex].y = y;
             this.blocks[blockIndex].setVisible(true);
-            debugcount++;
         }
         for (; blockIndex < this.blocks.length; blockIndex++) {
             this.blocks[blockIndex].setVisible(false);
