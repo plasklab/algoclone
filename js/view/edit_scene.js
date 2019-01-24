@@ -21,6 +21,18 @@ const REPLACE_BLOCK = "replace block";
 const NO_HIGHLIGHT  = "no highlight";
 const INSERT_OFFSET = 16;
 
+/*
+    内部的なプログラム : edittingProgram
+    内部的な各関数のコード : code
+    codeのインデックス : codeIndex
+    ユーザに見えるプログラム : visibleProgram
+    ユーザに見える各関数のコード : visibleCode
+    visibleCodeのインデックス : viewIndex
+    ユーザに見えるcodeの範囲 : visibleTop ... visibleBottom
+    codeIndex ---> viewIndex : codeToViewIndex(funcNo, codeIndex)
+    viewIndex ---> codeIndex : viewToCodeIndex(funcNo, viewIndex)
+*/
+
 // index in EditorBlock is codeIndex;
 var EditorBlock = enchant.Class.create(enchant.Group, {
     initialize: function(scene, x, y, imgsrc, token) {
