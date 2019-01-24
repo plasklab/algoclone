@@ -9,7 +9,11 @@ function loadMap(id) {
     case 1:
         mapdata = mapdata2();
         break;
+    case 2:
+        mapdata = mapdata3();
+        break;
     }
+
     maps.push(mapdata);
 }
 
