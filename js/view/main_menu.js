@@ -1,4 +1,7 @@
 
+var gameMode = undefined; //   "env" | "subst" | "argf"
+
+
 var MenuButton = enchant.Class.create(enchant.Group, {
   initialize: function(text, width, height) {
     enchant.Group.call(this);
@@ -27,8 +30,6 @@ var MenuButton = enchant.Class.create(enchant.Group, {
     this.label.font = f;
   }
 });
-
-var gameMode = undefined; //   "env" | "subst" | "argf"
 
 var MainMenu = enchant.Class.create(enchant.Scene, {
   initialize: function() {
