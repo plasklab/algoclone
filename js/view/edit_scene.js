@@ -440,6 +440,18 @@ var EditScene = enchant.Class.create(enchant.Scene, {
       return viewIndex + this.visibleTop[funcNo];
     },
 
+    existsBlock: function(block) {
+      for (var i = 0; i < this.FUNC_SYMBOL.length; i++) {
+          var visibleCode = this.visibleProgram[i];
+          for (var j = 0; j < this.CODE_LEN - 1; j++) {
+            if (visibleCode[j] && visibleCode[j] === block) {
+                return {funcNo: i, viewIndex: j};
+            }
+          }
+      }
+      return undefined;
+    },
+
     scrollUp: function(funcNo) {
       var code = this.editingProgram[funcNo];
       var visibleCode = this.visibleProgram[funcNo];
@@ -589,18 +601,6 @@ var EditScene = enchant.Class.create(enchant.Scene, {
                 this.highlightAtDrop.remove();
         } else
             this.highlightAtDrop.remove();
-    },
-
-    existsBlock: function(block) {
-      for (var i = 0; i < this.FUNC_SYMBOL.length; i++) {
-          var visibleCode = this.visibleProgram[i];
-          for (var j = 0; j < this.CODE_LEN - 1; j++) {
-            if (visibleCode[j] && visibleCode[j] === block) {
-                return {funcNo: i, viewIndex: j};
-            }
-          }
-      }
-      return undefined;
     },
 
     dropBlock: function(block, x, y) {
