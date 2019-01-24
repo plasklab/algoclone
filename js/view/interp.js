@@ -175,6 +175,7 @@ var Interp = enchant.Class.create({
         if (gameMode == "subst") {
             /* 仮引数を実引数に置き換える */
             var code = this.program.get(name);
+            code = this.cloneCode(code);
             if (name != "main" && arg.start != arg.end) {
                 for (var i = 0; i < code.length; i++) {
                     if (code[i].type == "Param") {
@@ -186,7 +187,6 @@ var Interp = enchant.Class.create({
                     }
                 }
             }
-            code = this.cloneCode(code);
             this.pushFrame(new FunctionFrame(name, code, arg));
         } else {
             var code = this.program.get(name);
