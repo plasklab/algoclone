@@ -43,7 +43,7 @@ const HIGHLIGHT_ON_1 = 1;
 const HIGHLIGHT_ON_2 = 2;
 
 var ExecBlock = enchant.Class.create(enchant.Group, {
-    initialize: function(scene, frameView, index, imgsrc) {
+    initialize: function(scene, frameView, index, imgsrc, loopcount) {
         enchant.Group.call(this);
 
         this.scene = scene;
@@ -57,6 +57,15 @@ var ExecBlock = enchant.Class.create(enchant.Group, {
         this.blockImg = new enchant.Sprite(32, 32);
         this.blockImg.image = game.assets[imgsrc];
         this.addChild(this.blockImg);
+
+        if (loopcount !== undefined) {
+            this.labelLoopcount = new Label(loopcount);
+            this.labelLoopcount.x = this.width / 2;
+            this.labelLoopcount.y = this.height / 2;
+            this.labelLoopcount.font = "10px monospace";
+            this.labelLoopcount.color = "black";
+            this.addChild(this.labelLoopcount);
+        }
         
         this.highlight = new enchant.Sprite(32, 32);
         this.highlight.visible = false;
@@ -169,7 +178,12 @@ var FunctionFrameView = enchant.Class.create({
             case "Blank": imgid = BLANK; break;
             default: debugprint("INVALID TOKEN: "+tokens[i]);
             }
-            var block = new ExecBlock(this.scene, this, i, imgid);
+            var block;
+            if (tokens[i].type == "Loop") {
+                block = new ExecBlock(this.scene, this, i, imgid, tokens[i].count);
+            } else {
+                block = new ExecBlock(this.scene, this, i, imgid);
+            }
             tokens[i].block = block;
             tokens[i].index = i;
             tokens[i].frameIndex = this.index;
