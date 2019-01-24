@@ -54,7 +54,7 @@ var MainMenu = enchant.Class.create(enchant.Scene, {
     var COLOR_ON ="#00BFFF";
 
     // Select stage buttons
-    var NUM_OF_STAGES = 13;
+    var NUM_OF_STAGES = 3;
     
     this.labelStage = new Label("Stage");
     this.labelStage.x = 80;
@@ -69,7 +69,7 @@ var MainMenu = enchant.Class.create(enchant.Scene, {
       //var col = i % 6;
       var row = 0;
       var col = i;
-      var btn = new MenuButton(i+"", 24, 24);
+      var btn = new MenuButton((i+1)+"", 24, 24);
       btn.setFont("21px cursive");
       btn.stageId = i;
       btn.x = 80+(col*28);
