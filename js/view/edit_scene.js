@@ -78,9 +78,12 @@ var EditorBlock = enchant.Class.create(enchant.Group, {
             if (this.mode == MODE_IN_PALETTE) {
                 this.mode = MODE_FROM_PALETTE;
                 var b = this.clone();
-                this.scene.insertBefore(b, this.scene.highlightAtDrop);
-            } else if (this.mode == MODE_IN_PROGRAM)
+                this.scene.insertBefore(this, this.scene.highlightAtDrop);
+                this.scene.insertBefore(b, this);
+            } else if (this.mode == MODE_IN_PROGRAM) {
                 this.mode = MODE_FROM_PROGRAM;
+                this.scene.insertBefore(this, this.scene.highlightAtDrop);
+            }
             this.clkOffX = e.x - this.x;
             this.clkOffY = e.y - this.y;
         });
@@ -188,6 +191,23 @@ var EditorBlockFuncall = enchant.Class.create(EditorBlock, {
     getToken: function() {
         console.log("Funcall: "+this.name);
         return new TokenFuncall(this.name);
+    },
+});
+
+var EditorBlockFuncallE = enchant.Class.create(EditorBlock, {
+    initialize: function(scene, x, y, imgsrc, name) {
+        EditorBlock.call(this, scene, x, y, imgsrc, undefined);
+        this.name = name;
+    },
+
+    clone: function() {
+        return new EditorBlockFuncallE(this.scene, this.x, this.y,
+                                       this.imgsrc, this.name);
+    },
+
+    getToken: function() {
+        console.log("Funcall: "+this.name);
+        return new TokenFuncallE(this.name);
     },
 });
 
@@ -302,10 +322,14 @@ var EditScene = enchant.Class.create(enchant.Scene, {
             [EditorBlock, LEFT,    new TokenLeft()],
             [EditorBlockLoop, BSTART],
             [EditorBlock, BEND,    new TokenBlockEnd()],
-            [EditorBlockFuncall, S_SPEAD,  "spead"],
-            [EditorBlockFuncall, S_HEART,  "heart"],
-            [EditorBlockFuncall, S_DIA,    "dia"],
-            [EditorBlockFuncall, S_CLOVER, "clover"],
+            [EditorBlockFuncall,  S_SPEAD,  "spead"],
+            [EditorBlockFuncall,  S_HEART,  "heart"],
+            [EditorBlockFuncall,  S_DIA,    "dia"],
+            [EditorBlockFuncall,  S_CLOVER, "clover"],
+            [EditorBlockFuncallE, N_SPEAD,  "spead"],
+            [EditorBlockFuncallE, N_HEART,  "heart"],
+            [EditorBlockFuncallE, N_DIA,    "dia"],
+            [EditorBlockFuncallE, N_CLOVER, "clover"],
             [EditorBlock, ARG,     new TokenParam((gameMode == "argf"))]
         ];
         this.PALETTE_OFFSET_X = map.x + map.width + 10;
