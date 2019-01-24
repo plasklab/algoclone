@@ -28,13 +28,15 @@ const CLEAR   = "../img/clear.png";
 const GAMEOVER= "../img/end.png";
 const INSERT  = "../img/insert_highlight.png";
 const REPLACE = "../img/replace_highlight.png";
+const UP      = "../img/up.png";
+const DOWN    = "../img/down.png";
 
 window.onload = function() {
   game = new Core(WIDTH, HEIGHT);
   game.fps = 60;
   game.preload(PLAYER, MAP, GOAL, ADVANCE, RIGHT, LEFT, LSTART, LEND, BSTART, BEND,
     SPEAD, HEART, DIA, CLOVER, S_SPEAD, S_HEART, S_DIA, S_CLOVER, ARG, BLANK, PLAY,
-    CLEAR, GAMEOVER, INSERT, REPLACE);
+    CLEAR, GAMEOVER, INSERT, REPLACE, UP, DOWN);
 
   game.onload = function() {
     var main_menu = new MainMenu();
@@ -75,5 +77,3 @@ window.onload = function() {
     game.start();
   // core.debug();
 }
-
-
