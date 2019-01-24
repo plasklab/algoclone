@@ -33,6 +33,8 @@ const GAMEOVER= "../img/end.png";
 const COIN    = "../img/coin.png";
 const INSERT  = "../img/insert_highlight.png";
 const REPLACE = "../img/replace_highlight.png";
+const UP      = "../img/up.png";
+const DOWN    = "../img/down.png";
 
 window.onload = function() {
   game = new Core(WIDTH, HEIGHT);
@@ -42,7 +44,8 @@ window.onload = function() {
 		 SPEAD, HEART, DIA, CLOVER,
 		 S_SPEAD, S_HEART, S_DIA, S_CLOVER,
 		 N_SPEAD, N_HEART, N_DIA, N_CLOVER,
-		 ARG, BLANK, PLAY, CLEAR, GAMEOVER, COIN, INSERT, REPLACE);
+     ARG, BLANK, PLAY, CLEAR, GAMEOVER, COIN, INSERT, REPLACE,
+     UP, DOWN);
 
   game.onload = function() {
     var main_menu = new MainMenu();
@@ -83,5 +86,3 @@ window.onload = function() {
     game.start();
   // core.debug();
 }
-
-

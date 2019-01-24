@@ -6,13 +6,14 @@
 //const PLAYER_SIZE = 32;
 const MAP_TILE_SIZE = 16;
 
-var MapData = function(name, ground, gems, init, goal) {
+var MapData = function(name, ground, gems, totalGem, init, goal) {
     this.name = name;
     this.ground = ground;
     if (gems == undefined)
         this.gems = [];
     else
         this.gems = gems;
+    this.total = totalGem;
     this.init = init;  // {x, y, dir}
     this.goal = goal;  // {x, y}
 }
@@ -191,7 +192,7 @@ var ScrollMap = enchant.Class.create({
                 if (left + c >= this.gems[r].length)
                     break;
                 var tileIndex = this.gems[top + r][left + c];
-                if (tileIndex == -1)
+                if (tileIndex == -1 || tileIndex == undefined)
                     continue;
                 var tile = game.assets[this.gemImgsrcs[tileIndex]];
                 this.ui.putGem(c, r, tile);
@@ -235,8 +236,13 @@ var ScrollMap = enchant.Class.create({
     },
 
     isPlayerInGoalPoint: function() {
-        return (this.player.x == this.goal.x) &&
-               (this.player.y == this.goal.y);
+        if ((this.player.x == this.goal.x) &&
+               (this.player.y == this.goal.y)) {
+            // console.log("player : " + this.player.x + " " + this.player.y);
+            // onsole.log("goal : " + this.goal.x + " " + this.goal.y);
+            return true;
+        }
+        return false;
     },
 });
 

@@ -42,66 +42,76 @@ const HIGHLIGHT_NONE = 0;
 const HIGHLIGHT_ON_1 = 1;
 const HIGHLIGHT_ON_2 = 2;
 
-var ExecBlock = enchant.Class.create(enchant.Sprite, {
-    initialize: function(scene, frameView, index, offsetX, offsetY, imgsrc) {
-        enchant.Sprite.call(this, 32, 32);
+var ExecBlock = enchant.Class.create(enchant.Group, {
+    initialize: function(scene, frameView, index, imgsrc) {
+        enchant.Group.call(this);
+
         this.scene = scene;
         this.frameView = frameView;
-        var blockSize = 32;
-        this.x = offsetX;
-        this.y = offsetY + index * blockSize;
-        this.image = game.assets[imgsrc];
+        this.index = index;
         this.imgsrc = imgsrc;
 
-        this.backgroundColor = "white";
-        this.isHighlight = false;
+        this.width = 32;
+        this.height = 32;
+
+        this.blockImg = new enchant.Sprite(32, 32);
+        this.blockImg.image = game.assets[imgsrc];
+        this.addChild(this.blockImg);
         
+        this.highlight = new enchant.Sprite(32, 32);
+        this.highlight.visible = false;
+        this.addChild(this.highlight);
+
         this.scene.addChild(this);
     },
+    
     getBlockName: function() {
         return this.imgsrc;
     },
-    /*
-    getCount: function() {
-        if (this.imgsrc == BSTART) {
-            return parseInt(this.countLabel.text);
-        } else {
-            return 0;
-        }
-    }*/
+
     setHighlight: function(val) {
         switch (val) {
         case HIGHLIGHT_NONE:
-            this.backgroundColor = "white";
+            this.highlight.backgroundColor = "white";
+            this.highlight.visible = false;
             break;
         case HIGHLIGHT_ON_1:
-            this.backgroundColor = "yellow";
+            this.highlight.backgroundColor = "yellow";
+            this.highlight.visible = true;
+            this.highlight.opacity = 0.5;
             break;
         case HIGHLIGHT_ON_2:
-            this.backgroundColor = "#CCCC00";
+            this.highlight.backgroundColor = "#CCCC00";
+            this.highlight.visible = true;
+            this.highlight.opacity = 0.5;
             break;
         }
-    }
+    },
+
+    setVisible: function(on) {
+        this.blockImg.visible = on;
+    },
 });
 
 var FunctionFrameView = enchant.Class.create({
-    initialize: function(scene, frameView, index, x, y, fname, tokens, maxLength) {
+    initialize: function(scene, frameView, index, x, y, fname, tokens, numOfDisplayBlocks) {
         this.scene = scene;
         this.frameView = frameView;
         this.index = index;
         this.x = x;
         this.y = y;
         this.fname = fname;
-        this.maxLength = maxLength;
+        this.numOfDisplayBlocks = numOfDisplayBlocks;
         this.width = frameView.BLOCK_SIZE + frameView.MARGIN * 2;
         this.bodyY = y + frameView.MARGIN + frameView.BLOCK_SIZE;
-        this.bodyHeight = tokens.length * frameView.BLOCK_SIZE + frameView.MARGIN * 2;
+        this.bodyHeight = this.numOfDisplayBlocks * frameView.BLOCK_SIZE + frameView.MARGIN * 2;
         this.background = new FillSquare(
             x,
             this.bodyY,
             this.width,
             this.bodyHeight,
         );
+        this.prevFocusedBlockIndex = 0;
 
         scene.addChild(this.background);
 
@@ -123,11 +133,11 @@ var FunctionFrameView = enchant.Class.create({
             this.scene.addChild(this.symbol);
         }
 
-        this.displayBlocks(tokens);
+        this.loadTokens(tokens);
+        this.currentHeadBlockIndex = 0;
+        this.display();
     },
-    displayBlocks: function(tokens) {
-        var headX = this.x + this.frameView.MARGIN;
-        var headY = this.bodyY + this.frameView.MARGIN;
+    loadTokens: function(tokens) {
         this.blocks = [];
 
         //[ADVANCE, BLANK, RIGHT, LEFT, BSTART, BEND, S_SPEAD, S_HEART, S_DIA, S_CLOVER, ARG];
@@ -159,11 +169,48 @@ var FunctionFrameView = enchant.Class.create({
             case "Blank": imgid = BLANK; break;
             default: debugprint("INVALID TOKEN: "+tokens[i]);
             }
-            var block = new ExecBlock(this.scene, this, i, headX, headY, imgid);
+            var block = new ExecBlock(this.scene, this, i, imgid);
             tokens[i].block = block;
+            tokens[i].index = i;
             tokens[i].frameIndex = this.index;
+            tokens[i].frameView = this;
+            block.visible = false;
             this.blocks.push(block);
         }
+    },
+    display: function() {
+        var headX = this.x + this.frameView.MARGIN;
+        var headY = this.bodyY + this.frameView.MARGIN;
+        var blockSize = 32;
+        var blockIndex = 0;
+        for (; blockIndex < this.currentHeadBlockIndex; blockIndex++) {
+            this.blocks[blockIndex].setVisible(false);
+        }
+        for (var i = 0; i < this.numOfDisplayBlocks && i < this.blocks.length; i++, blockIndex++) {
+            var x = headX;
+            var y = headY + i * blockSize;
+            this.blocks[blockIndex].x = x;
+            this.blocks[blockIndex].y = y;
+            this.blocks[blockIndex].setVisible(true);
+        }
+        for (; blockIndex < this.blocks.length; blockIndex++) {
+            this.blocks[blockIndex].setVisible(false);
+        }
+    },
+    focusBlock: function(index) {
+        var MARGIN = 2;
+        var indexOnView = index - this.currentHeadBlockIndex;
+        if (indexOnView < MARGIN) {
+            if (index < MARGIN) this.currentHeadBlockIndex = 0;
+            else this.currentHeadBlockIndex = index - MARGIN;
+        } else if (indexOnView >= this.numOfDisplayBlocks - MARGIN) {
+            if (index >= this.blocks.length - MARGIN) {
+                this.currentHeadBlockIndex = this.blocks.length - this.numOfDisplayBlocks;
+            } else {
+                this.currentHeadBlockIndex = index - this.numOfDisplayBlocks + 1 + MARGIN;
+            }
+        }
+        this.display();
     },
     remove: function() {
         this.scene.removeChild(this.background);
@@ -186,10 +233,10 @@ var FrameListView = enchant.Class.create({
         this.BLOCK_NUM = 12;
         this.DIST_BITWEEN_FRAMES = 8;
 
-        this.maxLength = maxLength;
+        this.numOfDisplayBlocks = maxLength;
 
         this.frameViewList = [];
-        this.frameViewList.push(new FunctionFrameView(this.scene, this, 0, x, y, "main", tokens, this.maxLength));
+        this.frameViewList.push(new FunctionFrameView(this.scene, this, 0, x, y, "main", tokens, this.numOfDisplayBlocks));
 
         this.shouldPopHighlightInfoStack = true;
         this.highlightInfoStack = [];
@@ -211,8 +258,8 @@ var FrameListView = enchant.Class.create({
             newFrameViewPosY,
             fname,
             tokens,
-            this.maxLength,
-            ));
+            this.numOfDisplayBlocks,
+        ));
         this.shouldPopHighlightInfoStack = false;
     },
     pop: function() {
@@ -277,6 +324,9 @@ var FrameListView = enchant.Class.create({
 
         token.block.setHighlight(HIGHLIGHT_ON_1);
         this.highlightInfoStack.push(highlightInfo);
+
+        token.frameView.focusBlock(token.index);
+        console.log(token.block);
     },
 });
 
@@ -306,7 +356,8 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         this.posNumberOfCoins = { x: 32, y: this.controlPanelOffset.y+64 };
         this.initCoinNumberLabel();
 
-        this.maxLengthOfFrameList = 8;
+        // 実行中ブロックリストの長さ
+        this.maxLengthOfFrameList = 12;
 
         var playScene = this;
         this.callbacks = {
@@ -376,7 +427,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         }
     },
     execNextStep: function() {
-        if (!this.interrupted) {
+        if (!this.interrupted && !this.programHasFinished) {
             if (this.engine.step()) {
                 setTimeout(function() {
                     if (this.autoPlaying) {
@@ -528,10 +579,10 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         clearImg.scaleY = 2;
         clearImg.image = game.assets[CLEAR];
         gameClearScene.addChild(clearImg);
+        playScene.programHasFinished = true;
         gameClearScene.addEventListener("touchstart", function() {
             game.popScene();
             playScene.autoPlaying = false;
-            playScene.programHasFinished = true;
             playScene.updateControlPanel();
         });
         game.pushScene(gameClearScene);
@@ -546,10 +597,10 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         gameOverImg.scaleY = 2;
         gameOverImg.image = game.assets[GAMEOVER];
         gameOverScene.addChild(gameOverImg);
+        playScene.programHasFinished = true;
         gameOverScene.addEventListener("touchstart", function() {
             game.popScene();
             playScene.autoPlaying = false;
-            playScene.programHasFinished = true;
             playScene.updateControlPanel();
         });
         game.pushScene(gameOverScene);
