@@ -3,6 +3,7 @@ const BLOCK_SIZE = 32;
 const PROGRAM_MAIN = "main";
 const PALETTE_ZONE = "palette zone";
 const PROGRAM_ZONE = "program zone";
+const SCROLL_ZONE  = "scroll zone";
 const FUNC_NAME = ["main", "spead", "heart", "dia", "clover"];
 
 const MODE_IN_PALETTE   = "mode in palette";
@@ -20,6 +21,19 @@ const REPLACE_BLOCK = "replace block";
 const NO_HIGHLIGHT  = "no highlight";
 const INSERT_OFFSET = 16;
 
+/*
+    内部的なプログラム : edittingProgram
+    内部的な各関数のコード : code
+    codeのインデックス : codeIndex
+    ユーザに見えるプログラム : visibleProgram
+    ユーザに見える各関数のコード : visibleCode
+    visibleCodeのインデックス : viewIndex
+    ユーザに見えるcodeの範囲 : visibleTop ... visibleBottom
+    codeIndex ---> viewIndex : codeToViewIndex(funcNo, codeIndex)
+    viewIndex ---> codeIndex : viewToCodeIndex(funcNo, viewIndex)
+*/
+
+// index in EditorBlock is codeIndex;
 var EditorBlock = enchant.Class.create(enchant.Group, {
     initialize: function(scene, x, y, imgsrc, token) {
         enchant.Group.call(this);
@@ -56,7 +70,7 @@ var EditorBlock = enchant.Class.create(enchant.Group, {
                                      this.getCenter().y);
             }
         });
-            
+
         this.addEventListener("touchstart", function(e) {
             if (e.done)
                 return;
@@ -78,7 +92,7 @@ var EditorBlock = enchant.Class.create(enchant.Group, {
         return new EditorBlock(this.scene,
                                this.x, this.y, this.imgsrc, this.token);
     },
-    
+
     getCenter: function() {
         return {x: this.x + BLOCK_SIZE / 2,
                 y: this.y + BLOCK_SIZE / 2};
@@ -93,15 +107,18 @@ var EditorBlock = enchant.Class.create(enchant.Group, {
         }
     },
 
-    remove: function() {
+    remove: function(code, index) {
         if (this.mode == MODE_IN_PROGRAM || this.mode == MODE_FROM_PROGRAM) {
             var curCode = this.positionInProgram.code;
             var curIndex = this.positionInProgram.index;
             curCode[curIndex] = undefined;
         }
+
+        if (index)
+            code[index] = undefined;
         this.scene.removeChild(this);
     },
-    
+
     put: function(x, y, code, index) {
         if (this.mode == MODE_FROM_PROGRAM ||
             this.mode == MODE_IN_PROGRAM) {
@@ -109,7 +126,7 @@ var EditorBlock = enchant.Class.create(enchant.Group, {
             var curIndex = this.positionInProgram.index;
             curCode[curIndex] = undefined;
         }
-        
+
         this.mode = MODE_IN_PROGRAM;
         this.positionInProgram = {
             x: x,
@@ -238,7 +255,7 @@ var DrawImage = enchant.Class.create(enchant.Sprite, {
 var EditScene = enchant.Class.create(enchant.Scene, {
     initialize: function(id) {
         enchant.Scene.call(this);
-        this.backgroundColor = "white";    
+        this.backgroundColor = "white";
 
         /*
          * layout scene
@@ -277,7 +294,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
                 mapOriginPrev = this.getOrigin();
             }
         });
-        
+
         const PALETTE_CONTENTS = [
             [EditorBlock, ADVANCE, new TokenForward()],
             undefined,
@@ -299,22 +316,34 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 
         /* editor zone */
         /* paletteArrayよりも下のレイヤに描画する必要があるため先に描画 */
+        this.SCROLL_BLOCK_HEIGHT = 12; // EDITOR_PROGRAM_TOPをずらすためここに配置
         this.EDITOR_X = this.PALETTE_OFFSET_X + this.PALETTE_WIDTH + 24;
         this.EDITOR_Y = this.PALETTE_OFFSET_Y;
         this.BLOCK_SIZE = 32;
-        this.EDITOR_PROGRAM_TOP = this.EDITOR_Y + this.BLOCK_SIZE;
+        this.EDITOR_PROGRAM_TOP = this.EDITOR_Y + this.BLOCK_SIZE
+                                  + this.SCROLL_BLOCK_HEIGHT;
         this.EDITOR_BLOCK_MARGIN = 4;
         this.CODE_LEN = 12;
         this.EDITOR_MARGIN = 16;
         this.FUNC_SYMBOL = [undefined, SPEAD, HEART, DIA, CLOVER];
+        this.SCROLL_SYMBOL = [UP, DOWN];
 
         this.editingProgram = [];  // array of code
+        this.visibleProgram = [];
+        this.visibleTop = [];
+        this.visibleBottom = [];
         var baseline = this.EDITOR_X;
         for (var i = 0; i < this.FUNC_SYMBOL.length; i++) {
             var code = [];
-            for (var j = 0; j < this.CODE_LEN; j++)
+            var visibleCode = [];
+            for (var j = 0; j < this.CODE_LEN; j++) {
                 code.push(undefined);
+                visibleCode.push(undefined);
+            }
             this.editingProgram.push(code);
+            this.visibleProgram.push(visibleCode);
+            this.visibleTop.push(0);
+            this.visibleBottom.push(this.CODE_LEN - 1);
 
             var rect = new FillSquare(
                 baseline - this.EDITOR_BLOCK_MARGIN,
@@ -322,13 +351,47 @@ var EditScene = enchant.Class.create(enchant.Scene, {
                 this.BLOCK_SIZE + this.EDITOR_BLOCK_MARGIN * 2,
                 this.CODE_LEN * this.BLOCK_SIZE + this.EDITOR_BLOCK_MARGIN * 2);
             this.addChild(rect);
-            
+
             if (this.FUNC_SYMBOL[i]) {
                 new DrawImage(this,
                               baseline, this.EDITOR_Y,
                               this.BLOCK_SIZE, this.BLOCK_SIZE,
                               this.FUNC_SYMBOL[i]);
             }
+
+            /* scroll zone */
+            var scroll_up = new FillSquare(
+                baseline,
+                this.EDITOR_PROGRAM_TOP - this.SCROLL_BLOCK_HEIGHT + 1,
+                this.BLOCK_SIZE + this.EDITOR_BLOCK_MARGIN * 2,
+                this.SCROLL_BLOCK_HEIGHT);
+            scroll_up.image = game.assets[this.SCROLL_SYMBOL[0]];
+            scroll_up.addEventListener("touchstart", function(e) {
+                var pos = this.getPositionByLocation(e.x, e.y);
+                if (!(pos.zone == SCROLL_ZONE)) {
+                    return;
+                }
+                var funcNo = pos.funcNo;
+                this.scrollUp(funcNo);
+            }.bind(this));
+            this.addChild(scroll_up);
+
+            var scroll_down = new FillSquare(
+                baseline,
+                this.EDITOR_PROGRAM_TOP + this.CODE_LEN * this.BLOCK_SIZE
+                                        + this.EDITOR_BLOCK_MARGIN * 2 - 1,
+                this.BLOCK_SIZE + this.EDITOR_BLOCK_MARGIN * 2,
+                this.SCROLL_BLOCK_HEIGHT);
+            scroll_down.image = game.assets[this.SCROLL_SYMBOL[1]];
+            scroll_down.addEventListener("touchstart", function(e) {
+                var pos = this.getPositionByLocation(e.x, e.y);
+                if (!(pos.zone == SCROLL_ZONE)) {
+                    return;
+                }
+                var funcNo = pos.funcNo;
+                this.scrollDown(funcNo);
+            }.bind(this));
+            this.addChild(scroll_down);
 
             baseline += this.BLOCK_SIZE + this.EDITOR_MARGIN;
         }
@@ -369,6 +432,80 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         this.addChild(playButton);
     },
 
+    codeToViewIndex: function(funcNo, codeIndex) {
+      return codeIndex - this.visibleTop[funcNo];
+    },
+
+    viewToCodeIndex: function(funcNo, viewIndex) {
+      return viewIndex + this.visibleTop[funcNo];
+    },
+
+    existsBlock: function(block) {
+      for (var i = 0; i < this.FUNC_SYMBOL.length; i++) {
+          var visibleCode = this.visibleProgram[i];
+          for (var j = 0; j < this.CODE_LEN - 1; j++) {
+            if (visibleCode[j] && visibleCode[j] === block) {
+                return {funcNo: i, viewIndex: j};
+            }
+          }
+      }
+      return undefined;
+    },
+
+    scrollUp: function(funcNo) {
+      var code = this.editingProgram[funcNo];
+      var visibleCode = this.visibleProgram[funcNo];
+      if (this.visibleTop[funcNo] <= 0) {
+          return;
+      }
+
+      if (code[this.visibleTop[funcNo] - 1])
+          this.addChild(code[this.visibleTop[funcNo] - 1]);
+      if (code[this.visibleBottom[funcNo]])
+          this.removeChild(code[this.visibleBottom[funcNo]]);
+
+      this.visibleTop[funcNo]--;
+      this.visibleBottom[funcNo]--;
+
+      var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
+      for (var i = 0; i < this.CODE_LEN; i++) { // i is viewIndex
+          var codeIndex = this.viewToCodeIndex(funcNo, i);
+          var slideBlock = code[codeIndex];
+          if (slideBlock) {
+              var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * i;
+              slideBlock.put(x, y, code, codeIndex);
+              visibleCode[i] = slideBlock;
+          }
+      }
+    },
+
+    scrollDown: function(funcNo) {
+      var code = this.editingProgram[funcNo];
+      var visibleCode = this.visibleProgram[funcNo];
+      if (this.visibleBottom[funcNo] >= code.length - 1) {
+          return;
+      }
+
+      if (code[this.visibleTop[funcNo]])
+          this.removeChild(code[this.visibleTop[funcNo]]);
+      if (code[this.visibleBottom[funcNo] + 1])
+          this.addChild(code[this.visibleBottom[funcNo] + 1]);
+
+      this.visibleTop[funcNo]++;
+      this.visibleBottom[funcNo]++;
+
+      var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
+      for (var i = 0; i < this.CODE_LEN; i++) { // i is viewIndex
+          var codeIndex = this.viewToCodeIndex(funcNo, i);
+          var slideBlock = code[codeIndex];
+          if (slideBlock) {
+              var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * i;
+              slideBlock.put(x, y, code, codeIndex);
+              visibleCode[i] = slideBlock;
+          }
+      }
+    },
+
     getPositionByLocation: function(x,y) {
         /* location is in palette */
         if (x >= this.PALETTE_OFFSET_X - 4 &&
@@ -385,51 +522,64 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         // = 426
         // 一番下に挿入した場合誤作動する
         y -= this.EDITOR_BLOCK_MARGIN;
-        if (!(y >= this.EDITOR_PROGRAM_TOP &&
-              y <= this.EDITOR_PROGRAM_TOP + this.CODE_LEN * this.BLOCK_SIZE)) {
+        if (!(y >= this.EDITOR_PROGRAM_TOP - this.SCROLL_BLOCK_HEIGHT &&
+              y <= this.EDITOR_PROGRAM_TOP + this.CODE_LEN * this.BLOCK_SIZE
+                                           + this.SCROLL_BLOCK_HEIGHT)) {
             return {zone: undefined};
         }
 
-        var index = Math.floor((y - this.EDITOR_PROGRAM_TOP) / this.BLOCK_SIZE);
-        var offset = y - this.EDITOR_PROGRAM_TOP - this.BLOCK_SIZE * index;
+        var viewIndex = Math.floor((y - this.EDITOR_PROGRAM_TOP)
+                                   / this.BLOCK_SIZE);
+        var offset = y - this.EDITOR_PROGRAM_TOP - this.BLOCK_SIZE * viewIndex;
         var left = this.EDITOR_X;
         for (var i = 0; i < this.FUNC_SYMBOL.length + 1; i++) {
             if (x >= left && x <= left + this.BLOCK_SIZE) {
+                if (!(y >= this.EDITOR_PROGRAM_TOP &&
+                      y <= this.EDITOR_PROGRAM_TOP
+                           + this.CODE_LEN * this.BLOCK_SIZE)) {
+                    return {zone: SCROLL_ZONE, funcNo: i};
+                }
                 return {zone: PROGRAM_ZONE, funcNo: i,
-                        index: index, offset: offset};
+                        viewIndex: viewIndex, offset: offset};
             }
             left += this.BLOCK_SIZE + this.EDITOR_MARGIN;
         }
-        
+
         return {zone: undefined};
     },
 
-    canInsert: function(code, index) {
-        for (var i = index; i < code.length; i++)
-            if (code[i] == undefined)
-                return true;
-        return false;
+    canInsert: function(code, viewIndex) {
+        // code size is unlimited.
+        /*
+            for (var i = index; i < code.length; i++)
+                if (code[i] == undefined)
+                    return true;
+            return false;
+        */
+        return true;
     },
-    
-    actionIfDrop: function(code, index, offset) {
+
+    actionIfDrop: function(code, visibleCode, viewIndex, offset) {
         if (offset < EDIT_INSERT_BLOCK_EDGE) {
-            if ((index == 0 && code[index] != undefined )||
-                (code[index - 1] != undefined && code[index] != undefined) &&
-                this.canInsert(code, index))
+            if ((viewIndex == 0 && visibleCode[viewIndex] != undefined ) ||
+                (visibleCode[viewIndex - 1] != undefined &&
+                 visibleCode[viewIndex] != undefined) &&
+                this.canInsert(code, viewIndex))
                 return ACTION_INSERT_BEFORE;
         } else if (offset >= this.BLOCK_SIZE - EDIT_INSERT_BLOCK_EDGE) {
-            if (index < code.length - 1 &&
-                code[index] != undefined && code[index + 1] != undefined &&
-                this.canInsert(code, index + 1))
+            if (viewIndex < visibleCode.length - 1 &&
+                visibleCode[viewIndex] != undefined &&
+                visibleCode[viewIndex + 1] != undefined &&
+                this.canInsert(code, viewIndex + 1))
                 return ACTION_INSERT_AFTER;
         }
 
-        if (code[index] == undefined)
+        if (visibleCode[viewIndex] == undefined)
             return ACTION_PUT;
 
         return ACTION_UNDO;
     },
-    
+
     highlightLocation: function(x, y) {
         var pos = this.getPositionByLocation(x, y);
 
@@ -437,17 +587,21 @@ var EditScene = enchant.Class.create(enchant.Scene, {
             var x = (this.EDITOR_X +
                      (this.BLOCK_SIZE + this.EDITOR_MARGIN) * pos.funcNo);
             var code = this.editingProgram[pos.funcNo];
-            var action = this.actionIfDrop(code, pos.index, pos.offset);
+            var visibleCode = this.visibleProgram[pos.funcNo];
+            var action = this.actionIfDrop(code, visibleCode,
+                                           pos.viewIndex, pos.offset);
             if (action == ACTION_INSERT_BEFORE) {
                 var y = (this.EDITOR_PROGRAM_TOP
-                         + this.BLOCK_SIZE * (pos.index - 1) + INSERT_OFFSET);
+                         + this.BLOCK_SIZE * (pos.viewIndex - 1)
+                         + INSERT_OFFSET);
                 this.highlightAtDrop.move(this, x, y, AFTER_BLOCK);
             } else if (action == ACTION_INSERT_AFTER) {
                 var y = (this.EDITOR_PROGRAM_TOP
-                         + this.BLOCK_SIZE * pos.index + INSERT_OFFSET);
+                         + this.BLOCK_SIZE * pos.viewIndex + INSERT_OFFSET);
                 this.highlightAtDrop.move(this, x, y, AFTER_BLOCK);
             } else if (action == ACTION_PUT) {
-                var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * pos.index;
+                var y = this.EDITOR_PROGRAM_TOP
+                        + this.BLOCK_SIZE * pos.viewIndex;
                 this.highlightAtDrop.move(this, x, y, REPLACE_BLOCK);
             } else
                 this.highlightAtDrop.remove();
@@ -460,48 +614,106 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         var pos = this.getPositionByLocation(x, y);
         if (pos.zone == undefined)
             block.undoMoving();
-        else if (pos.zone == PALETTE_ZONE)
-            block.remove();
+        else if (pos.zone == PALETTE_ZONE) {
+            var exists = this.existsBlock(block);
+            if(exists) {
+                var visibleCode = this.visibleProgram[exists.funcNo];
+                visibleCode[exists.viewIndex] = undefined;
+                var code = this.editingProgram[pos.funcNo];
+                block.remove(code, this.viewToCodeIndex(exists.viewIndex));
+            } else
+              block.remove(undefined, undefined);
+        }
         else if (pos.zone == PROGRAM_ZONE) {
             var code = this.editingProgram[pos.funcNo];
-            var action = this.actionIfDrop(code, pos.index, pos.offset);
+            var visibleCode = this.visibleProgram[pos.funcNo];
+            var action = this.actionIfDrop(code, visibleCode,
+                                           pos.viewIndex, pos.offset);
             if (action == ACTION_INSERT_BEFORE)
-                this.insertBlock(pos.funcNo, pos.index, block);
+                this.insertBlock(pos.funcNo, pos.viewIndex, block);
             else if (action == ACTION_INSERT_AFTER)
-                this.insertBlock(pos.funcNo, pos.index + 1, block);
+                this.insertBlock(pos.funcNo, pos.viewIndex + 1, block);
             else if (action == ACTION_PUT)
-                this.putBlock(pos.funcNo, pos.index, block);
+                this.putBlock(pos.funcNo, pos.viewIndex, block);
             else if (action == ACTION_UNDO)
                 block.undoMoving();
         } else
             block.undoMoving();
     },
-    
-    putBlock: function(funcNo, index, block) {
+
+    putBlock: function(funcNo, viewIndex, block) {
         var code = this.editingProgram[funcNo];
+        var visibleCode = this.visibleProgram[funcNo];
         var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
-        var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * index;
-        block.put(x, y, code, index);
+        var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * viewIndex;
+        var exists = this.existsBlock(block);
+        if(exists)
+            this.visibleProgram[exists.funcNo][exists.viewIndex] = undefined;
+        block.put(x, y, code, this.viewToCodeIndex(funcNo, viewIndex));
+        visibleCode[viewIndex] = block;
     },
 
-    insertBlock: function(funcNo, index, block) {
+    insertBlock: function(funcNo, viewIndex, block) {
+        var exists = this.existsBlock(block);
+        if(exists) {
+            block.remove(this.editingProgram[exists.funcNo],
+                         this.viewToCodeIndex(exists.funcNo, exists.viewIndex));
+            this.addChild(block);
+            this.visibleProgram[exists.funcNo][exists.viewIndex] = undefined;
+        }
+
         var code = this.editingProgram[funcNo];
+        var visibleCode = this.visibleProgram[funcNo];
+        var newCode = [];
 
         // There should be at least one blank because insertBlock
         // is called only if actionIfDrop made decision of insert.
-        var blankIndex = index;
-        while (code[blankIndex])
+        // It is a little time ago.
+        var codeIndex = this.viewToCodeIndex(funcNo, viewIndex);
+        var blankIndex = codeIndex;
+        while (code[blankIndex]) {
             blankIndex++;
-
-        var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
-        for (var i = blankIndex - 1; i >= index; i--) {
-            var slideBlock = code[i];
-            if (slideBlock) {
-                var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * (i + 1);
-                slideBlock.put(x, y, code, i + 1);
+            if (blankIndex >= code.length) {
+              code[code.length] = undefined;
             }
         }
-        this.putBlock(funcNo, index, block);
+
+        for (var i = 0; i < codeIndex; i++) {
+            if (code[i])
+                code[i].put(code[i].x, code[i].y, newCode, i);
+        }
+
+        var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
+        var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * viewIndex;
+        block.put(x, y, newCode, codeIndex);
+
+        for (var i = codeIndex; i < blankIndex; i++) {
+            var slideBlock = code[i];
+            var viewIndexForSlideBlock = this.codeToViewIndex(funcNo, i + 1);
+            y = this.EDITOR_PROGRAM_TOP
+                + this.BLOCK_SIZE * viewIndexForSlideBlock;
+            slideBlock.put(x, y, newCode, i + 1);
+            if (viewIndexForSlideBlock > this.CODE_LEN - 1) // out of visible range
+                this.removeChild(slideBlock);
+        }
+
+        for (var i = blankIndex + 1; i < code.length; i++) {
+            if(code[i])
+                code[i].put(code[i].x, code[i].y, newCode, i);
+            else
+              newCode.push(undefined);
+        }
+
+        for (var i = 0; i < code.length; i++) {
+          if (newCode[i])
+            newCode[i].put(newCode[i].x, newCode[i].y, code, i);
+          else
+            code[i] = undefined;
+        }
+
+        for (var i = 0; i < this.CODE_LEN; i++) {
+            visibleCode[i] = code[this.viewToCodeIndex(funcNo, i)];
+        }
     },
 
     getProgram: function() {
