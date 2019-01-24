@@ -42,66 +42,72 @@ const HIGHLIGHT_NONE = 0;
 const HIGHLIGHT_ON_1 = 1;
 const HIGHLIGHT_ON_2 = 2;
 
-var ExecBlock = enchant.Class.create(enchant.Sprite, {
-    initialize: function(scene, frameView, index, offsetX, offsetY, imgsrc) {
-        enchant.Sprite.call(this, 32, 32);
+var ExecBlock = enchant.Class.create(enchant.Group, {
+    initialize: function(scene, frameView, index, imgsrc) {
+        enchant.Group.call(this);
+
         this.scene = scene;
         this.frameView = frameView;
-        var blockSize = 32;
-        this.x = offsetX;
-        this.y = offsetY + index * blockSize;
-        this.image = game.assets[imgsrc];
+        this.index = index;
         this.imgsrc = imgsrc;
 
-        this.backgroundColor = "white";
-        this.isHighlight = false;
+        this.width = 32;
+        this.height = 32;
+
+        this.blockImg = new enchant.Sprite(32, 32);
+        this.blockImg.image = game.assets[imgsrc];
+        this.addChild(this.blockImg);
         
+        this.highlight = new enchant.Sprite(32, 32);
+        this.highlight.visible = false;
+        this.addChild(this.highlight);
+
         this.scene.addChild(this);
     },
+    
     getBlockName: function() {
         return this.imgsrc;
     },
-    /*
-    getCount: function() {
-        if (this.imgsrc == BSTART) {
-            return parseInt(this.countLabel.text);
-        } else {
-            return 0;
-        }
-    }*/
+
     setHighlight: function(val) {
         switch (val) {
         case HIGHLIGHT_NONE:
-            this.backgroundColor = "white";
+            this.highlight.backgroundColor = "white";
+            this.highlight.visible = false;
             break;
         case HIGHLIGHT_ON_1:
-            this.backgroundColor = "yellow";
+            this.highlight.backgroundColor = "yellow";
+            this.highlight.visible = true;
+            this.highlight.opacity = 0.5;
             break;
         case HIGHLIGHT_ON_2:
-            this.backgroundColor = "#CCCC00";
+            this.highlight.backgroundColor = "#CCCC00";
+            this.highlight.visible = true;
+            this.highlight.opacity = 0.5;
             break;
         }
-    }
+    },
 });
 
 var FunctionFrameView = enchant.Class.create({
-    initialize: function(scene, frameView, index, x, y, fname, tokens, maxLength) {
+    initialize: function(scene, frameView, index, x, y, fname, tokens, numOfDisplayBlocks) {
         this.scene = scene;
         this.frameView = frameView;
         this.index = index;
         this.x = x;
         this.y = y;
         this.fname = fname;
-        this.maxLength = maxLength;
+        this.numOfDisplayBlocks = numOfDisplayBlocks;
         this.width = frameView.BLOCK_SIZE + frameView.MARGIN * 2;
         this.bodyY = y + frameView.MARGIN + frameView.BLOCK_SIZE;
-        this.bodyHeight = tokens.length * frameView.BLOCK_SIZE + frameView.MARGIN * 2;
+        this.bodyHeight = this.numOfDisplayBlocks * frameView.BLOCK_SIZE + frameView.MARGIN * 2;
         this.background = new FillSquare(
             x,
             this.bodyY,
             this.width,
             this.bodyHeight,
         );
+        this.prevFocusedBlockIndex = 0;
 
         scene.addChild(this.background);
 
@@ -123,11 +129,11 @@ var FunctionFrameView = enchant.Class.create({
             this.scene.addChild(this.symbol);
         }
 
-        this.displayBlocks(tokens);
+        this.loadTokens(tokens);
+        this.currentHeadBlockIndex = 0;
+        this.display();
     },
-    displayBlocks: function(tokens) {
-        var headX = this.x + this.frameView.MARGIN;
-        var headY = this.bodyY + this.frameView.MARGIN;
+    loadTokens: function(tokens) {
         this.blocks = [];
 
         //[ADVANCE, BLANK, RIGHT, LEFT, BSTART, BEND, S_SPEAD, S_HEART, S_DIA, S_CLOVER, ARG];
@@ -152,11 +158,48 @@ var FunctionFrameView = enchant.Class.create({
                 case "Blank": imgid = BLANK; break;
                 default: debugprint("INVALID TOKEN: "+tokens[i]);
             }
-            var block = new ExecBlock(this.scene, this, i, headX, headY, imgid);
+            var block = new ExecBlock(this.scene, this, i, imgid);
             tokens[i].block = block;
+            tokens[i].index = i;
             tokens[i].frameIndex = this.index;
+            tokens[i].frameView = this;
+            block.visible = false;
             this.blocks.push(block);
         }
+    },
+    display: function() {
+        var headX = this.x + this.frameView.MARGIN;
+        var headY = this.bodyY + this.frameView.MARGIN;
+        var blockSize = 32;
+        var blockIndex = 0;
+        for (; blockIndex < this.currentHeadBlockIndex; blockIndex++) {
+            this.blocks[blockIndex].visible = false;
+        }
+        for (var i = 0; i < this.numOfDisplayBlocks; i++, blockIndex++) {
+            var x = headX;
+            var y = headY + i * blockSize;
+            this.blocks[blockIndex].x = x;
+            this.blocks[blockIndex].y = y;
+            this.blocks[blockIndex].visible = true;
+        }
+        for (; blockIndex < this.blocks.length; blockIndex++) {
+            this.blocks[blockIndex].visible = false;
+        }
+    },
+    focusBlock: function(index) {
+        var MARGIN = 2;
+        var indexOnView = index - this.currentHeadBlockIndex;
+        if (indexOnView < MARGIN) {
+            if (index < MARGIN) this.currentHeadBlockIndex = 0;
+            else this.currentHeadBlockIndex = index - MARGIN;
+        } else if (indexOnView >= this.numOfDisplayBlocks - MARGIN) {
+            if (index >= this.blocks.length - MARGIN) {
+                this.currentHeadBlockIndex = this.blocks.length - this.numOfDisplayBlocks;
+            } else {
+                this.currentHeadBlockIndex = index - this.numOfDisplayBlocks + 1 + MARGIN;
+            }
+        }
+        this.display();
     },
     remove: function() {
         this.scene.removeChild(this.background);
@@ -179,10 +222,10 @@ var FrameListView = enchant.Class.create({
         this.BLOCK_NUM = 12;
         this.DIST_BITWEEN_FRAMES = 8;
 
-        this.maxLength = maxLength;
+        this.numOfDisplayBlocks = maxLength;
 
         this.frameViewList = [];
-        this.frameViewList.push(new FunctionFrameView(this.scene, this, 0, x, y, "main", tokens, this.maxLength));
+        this.frameViewList.push(new FunctionFrameView(this.scene, this, 0, x, y, "main", tokens, this.numOfDisplayBlocks));
 
         this.shouldPopHighlightInfoStack = true;
         this.highlightInfoStack = [];
@@ -204,8 +247,8 @@ var FrameListView = enchant.Class.create({
             newFrameViewPosY,
             fname,
             tokens,
-            this.maxLength,
-            ));
+            this.numOfDisplayBlocks,
+        ));
         this.shouldPopHighlightInfoStack = false;
     },
     pop: function() {
@@ -270,6 +313,9 @@ var FrameListView = enchant.Class.create({
 
         token.block.setHighlight(HIGHLIGHT_ON_1);
         this.highlightInfoStack.push(highlightInfo);
+
+        token.frameView.focusBlock(token.index);
+        console.log(token.block);
     },
 });
 
@@ -277,22 +323,30 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
     initialize: function(mapId, program) {
         enchant.Scene.call(this);
         this.backgroundColor = "white";
-
-        var map = game.createMap(mapId);
-        this.map = map;
-        this.addChild(map);
-
         this.program = program;
 
-        this.autoPlaying = false;
+        // 状態
+        this.autoPlaying = true;
         this.programHasFinished = false;
+        this.interrupted = false;
 
-        this.autoPlayingInterval = 1000;
-        this.controlPanelOffsetX = 32;
-        this.controlPanelOffsetY = map.y + map.height + 32;
+        // mapを表示する場所&大きさ
+        var mapSpace = { x: 0, y: 0, width: 20, height: 16 };
+        this.mapSpace = mapSpace;
+
+        // 自動実行時の各ステップの間隔（ms）
+        this.autoPlayingInterval = 500;
+
+        // 操作ボタンの場所の基準
+        this.controlPanelOffset = { x: 32, y: mapSpace.y + (mapSpace.height*MAP_TILE_SIZE) + 32 };
         this.initControlPanel();
+        
+        // 取得コインの数を表示する場所
+        this.posNumberOfCoins = { x: 32, y: this.controlPanelOffset.y+64 };
+        this.initCoinNumberLabel();
 
-        this.maxLengthOfFrameList = 8;
+        // 実行中ブロックリストの長さ
+        this.maxLengthOfFrameList = 12;
 
         var playScene = this;
         this.callbacks = {
@@ -300,77 +354,36 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
                 playScene.frameListView.setHighlight(token);
             },
             forward: function() {
-                var nextX, nextY;
-                switch (playScene.playerState.direction) {
-                    case PLAYER_DIRECTION_UP: {
-                        nextX = playScene.playerState.x;
-                        nextY = playScene.playerState.y - 1;
-                    } break;
-                    case PLAYER_DIRECTION_DOWN: {
-                        nextX = playScene.playerState.x;
-                        nextY = playScene.playerState.y + 1;
-                    } break;
-                    case PLAYER_DIRECTION_LEFT: {
-                        nextX = playScene.playerState.x - 1;
-                        nextY = playScene.playerState.y;
-                    } break;
-                    case PLAYER_DIRECTION_RIGHT: {
-                        nextX = playScene.playerState.x + 1;
-                        nextY = playScene.playerState.y;
-                    } break;
-                    default: {
-                        debugprint("forward: unknown direction: "+playScene.playerState.direction);
+                if (playScene.map.player.moveForward()) {
+                    var x = playScene.map.player.x;
+                    var y = playScene.map.player.y;
+                    switch (playScene.map.getGem(x, y)) {
+                    case 0: // COIN
+                    {
+                        playScene.map.setGem(x, y, -1);
+                        playScene.numOfCoinsAcquired++;
+                        playScene.updateCoinNumber();
+                        break;
                     }
-                }
-
-                if (map.hitTest(nextX*MAP_BLOCK_SIZE, nextY*MAP_BLOCK_SIZE)) {
-                    console.log("GameOver");
-                    playScene.gameFailed();
+                    case -1: break;
+                    }
+                    playScene.map.redraw();
+                    if (playScene.map.isPlayerInGoalPoint()) {
+                        // clear.
+                        playScene.gameClear();
+                    }
                 } else {
-                    playScene.player.moveForward();
-                    playScene.playerState.x = nextX;
-                    playScene.playerState.y = nextY;
+                    // Game over.
+                    playScene.gameFailed();
                 }
             },
             right: function() {
-                var d = undefined;
-                switch (playScene.playerState.direction) {
-                    case PLAYER_DIRECTION_UP: {
-                        d = PLAYER_DIRECTION_RIGHT;
-                    } break;
-                    case PLAYER_DIRECTION_DOWN: {
-                        d = PLAYER_DIRECTION_LEFT;
-                    } break;
-                    case PLAYER_DIRECTION_LEFT: {
-                        d = PLAYER_DIRECTION_UP
-                    } break;
-                    case PLAYER_DIRECTION_RIGHT: {
-                        d = PLAYER_DIRECTION_DOWN;
-                    } break;
-                    default: debugprint("right: unknown direction: "+playScene.playerState.direction);
-                }
-                playScene.player.setDirection(d);
-                playScene.playerState.direction = d;
+                playScene.map.player.rotateRight();
+                playScene.map.redraw();
             },
             left: function() {
-                var d = undefined;
-                switch (playScene.playerState.direction) {
-                    case PLAYER_DIRECTION_UP: {
-                        d = PLAYER_DIRECTION_LEFT;
-                    } break;
-                    case PLAYER_DIRECTION_DOWN: {
-                        d = PLAYER_DIRECTION_RIGHT;
-                    } break;
-                    case PLAYER_DIRECTION_LEFT: {
-                        d = PLAYER_DIRECTION_DOWN;
-                    } break;
-                    case PLAYER_DIRECTION_RIGHT: {
-                        d = PLAYER_DIRECTION_UP;
-                    } break;
-                    default: debugprint("left: unknown direction: "+playScene.playerState.direction);
-                }
-                playScene.player.setDirection(d);
-                playScene.playerState.direction = d;
+                playScene.map.player.rotateLeft();
+                playScene.map.redraw();
             },
             funcall: function(fname) {
                 //frameListView.pushFunctionFrame(fname, program.get(fname));
@@ -392,9 +405,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
             },
         }
 
-        this.autoPlaying = true;
-        this.programHasFinished = false;
-        this.interrupted = false;
+        // 初期化，実行
         this.init();
         if (this.autoPlaying) {
             setTimeout(function() {
@@ -405,7 +416,7 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         }
     },
     execNextStep: function() {
-        if (!this.interrupted) {
+        if (!this.interrupted && !this.programHasFinished) {
             if (this.engine.step()) {
                 setTimeout(function() {
                     if (this.autoPlaying) {
@@ -423,8 +434,8 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
 
         // back to the edit scene
         var btnEdit = new Button("Edit");
-        btnEdit.x = this.controlPanelOffsetX;
-        btnEdit.y = this.controlPanelOffsetY;
+        btnEdit.x = this.controlPanelOffset.x;
+        btnEdit.y = this.controlPanelOffset.y;
         btnEdit.addEventListener("touchstart", function() {
             game.popScene();
             playScene.interrupted = true;
@@ -434,8 +445,8 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
 
         // initialize player position
         var btnInit = new Button("Init");
-        btnInit.x = this.controlPanelOffsetX + 64;
-        btnInit.y = this.controlPanelOffsetY;
+        btnInit.x = this.controlPanelOffset.x + 64;
+        btnInit.y = this.controlPanelOffset.y;
         btnInit.addEventListener("touchstart", function() {
             playScene.programHasFinished = false;
             playScene.autoPlaying = false;
@@ -449,8 +460,8 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         var btnPlay = new Button("Play");
         var btnStop = new Button("Stop");
 
-        btnPlay.x = this.controlPanelOffsetX + 64*2;
-        btnPlay.y = this.controlPanelOffsetY;
+        btnPlay.x = this.controlPanelOffset.x + 64*2;
+        btnPlay.y = this.controlPanelOffset.y;
         btnPlay.addEventListener("touchstart", function() {
             playScene.autoPlaying = true;
             if (playScene.programHasFinished) {
@@ -466,8 +477,8 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         });
         this.addChild(btnPlay);
 
-        btnStop.x = this.controlPanelOffsetX + 64*2;
-        btnStop.y = this.controlPanelOffsetY;
+        btnStop.x = this.controlPanelOffset.x + 64*2;
+        btnStop.y = this.controlPanelOffset.y;
         btnStop.addEventListener("touchstart", function() {
             playScene.autoPlaying = false;
             playScene.updateControlPanel();
@@ -481,14 +492,15 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
 
         // Next step
         var btnNext = new Button("Next");
-        btnNext.x = this.controlPanelOffsetX + 64*3;
-        btnNext.y = this.controlPanelOffsetY;
+        btnNext.x = this.controlPanelOffset.x + 64*3;
+        btnNext.y = this.controlPanelOffset.y;
         btnNext.addEventListener("touchstart", function() {
             playScene.execNextStep();
         });
         this.addChild(btnNext);
         this.btnNext = btnNext;
-        
+
+        this.controlPanelWidth = 64*4;
         
         playScene.updateControlPanel();
     },
@@ -506,58 +518,63 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         this.btnNext.touchEnabled = !this.programHasFinished && !this.autoPlaying;
     },
 
+    initCoinNumberLabel: function() {
+        this.labelNumOfCoins = new Label();
+        this.labelNumOfCoins.x = this.posNumberOfCoins.x;
+        this.labelNumOfCoins.y = this.posNumberOfCoins.y;
+        this.labelNumOfCoins.color = "red";
+        this.labelNumOfCoins.font = "64px monospace";
+        this.addChild(this.labelNumOfCoins);
+    },
+
     init: function() {
-        var map = this.map;
+        // 状態
+        this.numOfCoinsAcquired = 0;
 
-        if (this.goal !== undefined) this.removeChild(this.goal);
-        this.goal = new Goal(map.goal_x, map.goal_y);
-        this.addChild(this.goal);
-
-        if (this.player !== undefined) this.removeChild(this.player);
-        this.player = new Player(map.init_x, map.init_y, map.init_direction);
-        this.addChild(this.player);
-
-        this.playerState = {
-            x: map.init_x,
-            y: map.init_y,
-            direction: map.init_direction,
-        };
+        var map = getInitializedMap(this, this.mapSpace);
+        this.map = map;
         
         this.engine = new Interp(this.program, this.callbacks);
+
         var mainCode = this.engine.getCurrentFrameCode();
+
         if (this.frameListView !== undefined) this.frameListView.remove();
+        var xPosOfFrameListView1 = map.x + map.width + 10;
+        var xPosOfFrameListView2 = this.controlPanelOffset.x + this.controlPanelWidth + 10;
         this.frameListView = new FrameListView(this,
-            map.x + map.width + 10,
+            (xPosOfFrameListView1 > xPosOfFrameListView2) ? xPosOfFrameListView1 : xPosOfFrameListView2,
             16,
             mainCode,
             this.maxLengthOfFrameList);
 
         this.updateControlPanel();
+        this.updateCoinNumber();
     },
 
     end: function() {
-        var playScene = this;
-        if (this.playerState.x == this.map.goal_x &&
-            this.playerState.y == this.map.goal_y) {
-                // Game clear.
-                var gameClearScene = new Scene();
-                var clearImg = new Sprite(267, 48);
-                clearImg.x = 267; clearImg.y = 48;
-                clearImg.scaleX = 2;
-                clearImg.scaleY = 2;
-                clearImg.image = game.assets[CLEAR];
-                gameClearScene.addChild(clearImg);
-                gameClearScene.addEventListener("touchstart", function() {
-                    game.popScene();
-                    playScene.autoPlaying = false;
-                    playScene.programHasFinished = true;
-                    playScene.updateControlPanel();
-                });
-                game.pushScene(gameClearScene);
+        if (this.map.isPlayerInGoalPoint()) {
+            this.gameClear();
         } else {
-            // Game over.
             this.gameFailed();
         }
+    },
+
+    gameClear: function() {
+        var playScene = this;
+        var gameClearScene = new Scene();
+        var clearImg = new Sprite(267, 48);
+        clearImg.x = 267; clearImg.y = 48;
+        clearImg.scaleX = 2;
+        clearImg.scaleY = 2;
+        clearImg.image = game.assets[CLEAR];
+        gameClearScene.addChild(clearImg);
+        playScene.programHasFinished = true;
+        gameClearScene.addEventListener("touchstart", function() {
+            game.popScene();
+            playScene.autoPlaying = false;
+            playScene.updateControlPanel();
+        });
+        game.pushScene(gameClearScene);
     },
 
     gameFailed: function() {
@@ -569,16 +586,28 @@ var PlayScene = enchant.Class.create(enchant.Scene, {
         gameOverImg.scaleY = 2;
         gameOverImg.image = game.assets[GAMEOVER];
         gameOverScene.addChild(gameOverImg);
+        playScene.programHasFinished = true;
         gameOverScene.addEventListener("touchstart", function() {
             game.popScene();
             playScene.autoPlaying = false;
-            playScene.programHasFinished = true;
             playScene.updateControlPanel();
         });
         game.pushScene(gameOverScene);
     },
 
+    updateCoinNumber: function() {
+        this.labelNumOfCoins.text = this.numOfCoinsAcquired;
+    },
+
 });
+
+var getInitializedMap = function(scene, mapSpace) {
+    var mapData = maps[0];
+    var map = new ScrollMap(mapData, MAP, [COIN]);
+    //map.setOrigin(0, 0);
+    map.place(scene, mapSpace.x, mapSpace.y, mapSpace.width, mapSpace.height);
+    return map;
+};
 
 /* Local Variables: */
 /* indent-tabs-mode: nil */

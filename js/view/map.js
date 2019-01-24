@@ -86,8 +86,27 @@ var ScrollMap = enchant.Class.create({
         this.mapData = mapData;
 
         this.ground = mapData.ground;  // array(row) of array(col)
-        this.gems = mapData.gems;
-        this.player = mapData.init;
+        this.goal = mapData.goal;
+        this.gems = copyGems(mapData.gems);
+        this.player = Object.assign({}, mapData.init);
+
+        // Player action
+        this.player.moveForward = function() {
+            var newX = this.x;
+            var newY = this.y;
+            switch (this.dir) {
+                case PLAYER_DIRECTION_UP: newY -= 1; break;
+                case PLAYER_DIRECTION_DOWN: newY += 1; break;
+                case PLAYER_DIRECTION_RIGHT: newX += 1; break;
+                case PLAYER_DIRECTION_LEFT: newX -= 1; break;
+            }
+            if (isValidPlayerPos(newX, newY, mapData.ground)) {
+                this.x = newX;  this.y = newY;
+                return true;
+            } else { return false; }
+        };
+        this.player.rotateLeft = function() { this.dir = rotateLeft(this.dir); }
+        this.player.rotateRight = function() { this.dir = rotateRight(this.dir); }
 
         // cols x rows is the size of the map.
         // The size of the viewport is this.ui.cols x this.ui.rows.
@@ -195,7 +214,69 @@ var ScrollMap = enchant.Class.create({
                            })(this.player.dir),
                            PLAYER_SIZE, PLAYER_SIZE, -8, -12);
     },
+
+    getGem: function(x, y) {
+        if (y < this.gems.length) {
+            if (x < this.gems[y].length) {
+                return this.gems[y][x];
+            }
+        }
+        return -1;
+    },
+
+    setGem: function(x, y, gem) {
+        // extends gems
+        for (var i = this.gems.length; i < y + 1; i++)
+            this.gems.push([]);
+        for (var i = this.gems[y].length; i < x + 1; i++)
+            this.gems[y].push(-1);
+        
+        this.gems[y][x] = gem;
+    },
+
+    isPlayerInGoalPoint: function() {
+        return (this.player.x == this.goal.x) &&
+               (this.player.y == this.goal.y);
+    },
 });
+
+var copyGems = function(gems) {
+    var copied = [];
+    for (var i = 0; i < gems.length; i++) {
+        copied.push(gems[i].slice(0));
+    }
+    return copied;
+};
+
+var isValidPlayerPos = function(x, y, ground) {
+    var validTiles = [
+        6, // road
+        27, // goal
+    ];
+    var val = ground[y][x];
+    for (var i = 0; i < validTiles.length; i++) {
+        if (validTiles[i] == val) return true;
+    }
+    return false;
+};
+
+var rotateLeft = function(dir) {
+    switch (dir) {
+        case PLAYER_DIRECTION_UP: return PLAYER_DIRECTION_LEFT;
+        case PLAYER_DIRECTION_LEFT: return PLAYER_DIRECTION_DOWN;
+        case PLAYER_DIRECTION_DOWN: return PLAYER_DIRECTION_RIGHT;
+        case PLAYER_DIRECTION_RIGHT: return PLAYER_DIRECTION_UP;
+    }
+};
+
+var rotateRight = function(dir) {
+    switch (dir) {
+        case PLAYER_DIRECTION_UP: return PLAYER_DIRECTION_RIGHT;
+        case PLAYER_DIRECTION_RIGHT: return PLAYER_DIRECTION_DOWN;
+        case PLAYER_DIRECTION_DOWN: return PLAYER_DIRECTION_LEFT;
+        case PLAYER_DIRECTION_LEFT: return PLAYER_DIRECTION_UP;
+    }
+};
 
 /* Local Variables: */
 /* indent-tabs-mode: nil */
