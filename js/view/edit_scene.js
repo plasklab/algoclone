@@ -528,7 +528,8 @@ var EditScene = enchant.Class.create(enchant.Scene, {
             return {zone: undefined};
         }
 
-        var viewIndex = Math.floor((y - this.EDITOR_PROGRAM_TOP) / this.BLOCK_SIZE);
+        var viewIndex = Math.floor((y - this.EDITOR_PROGRAM_TOP)
+                                   / this.BLOCK_SIZE);
         var offset = y - this.EDITOR_PROGRAM_TOP - this.BLOCK_SIZE * viewIndex;
         var left = this.EDITOR_X;
         for (var i = 0; i < this.FUNC_SYMBOL.length + 1; i++) {
@@ -560,13 +561,15 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 
     actionIfDrop: function(code, visibleCode, viewIndex, offset) {
         if (offset < EDIT_INSERT_BLOCK_EDGE) {
-            if ((viewIndex == 0 && visibleCode[viewIndex] != undefined )||
-                (visibleCode[viewIndex - 1] != undefined && visibleCode[viewIndex] != undefined) &&
+            if ((viewIndex == 0 && visibleCode[viewIndex] != undefined ) ||
+                (visibleCode[viewIndex - 1] != undefined &&
+                 visibleCode[viewIndex] != undefined) &&
                 this.canInsert(code, viewIndex))
                 return ACTION_INSERT_BEFORE;
         } else if (offset >= this.BLOCK_SIZE - EDIT_INSERT_BLOCK_EDGE) {
             if (viewIndex < visibleCode.length - 1 &&
-                visibleCode[viewIndex] != undefined && visibleCode[viewIndex + 1] != undefined &&
+                visibleCode[viewIndex] != undefined &&
+                visibleCode[viewIndex + 1] != undefined &&
                 this.canInsert(code, viewIndex + 1))
                 return ACTION_INSERT_AFTER;
         }
@@ -585,17 +588,20 @@ var EditScene = enchant.Class.create(enchant.Scene, {
                      (this.BLOCK_SIZE + this.EDITOR_MARGIN) * pos.funcNo);
             var code = this.editingProgram[pos.funcNo];
             var visibleCode = this.visibleProgram[pos.funcNo];
-            var action = this.actionIfDrop(code, visibleCode, pos.viewIndex, pos.offset);
+            var action = this.actionIfDrop(code, visibleCode,
+                                           pos.viewIndex, pos.offset);
             if (action == ACTION_INSERT_BEFORE) {
                 var y = (this.EDITOR_PROGRAM_TOP
-                         + this.BLOCK_SIZE * (pos.viewIndex - 1) + INSERT_OFFSET);
+                         + this.BLOCK_SIZE * (pos.viewIndex - 1)
+                         + INSERT_OFFSET);
                 this.highlightAtDrop.move(this, x, y, AFTER_BLOCK);
             } else if (action == ACTION_INSERT_AFTER) {
                 var y = (this.EDITOR_PROGRAM_TOP
                          + this.BLOCK_SIZE * pos.viewIndex + INSERT_OFFSET);
                 this.highlightAtDrop.move(this, x, y, AFTER_BLOCK);
             } else if (action == ACTION_PUT) {
-                var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * pos.viewIndex;
+                var y = this.EDITOR_PROGRAM_TOP
+                        + this.BLOCK_SIZE * pos.viewIndex;
                 this.highlightAtDrop.move(this, x, y, REPLACE_BLOCK);
             } else
                 this.highlightAtDrop.remove();
@@ -611,7 +617,8 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         else if (pos.zone == PALETTE_ZONE) {
             var exists = this.existsBlock(block);
             if(exists) {
-                this.visibleProgram[exists.funcNo][exists.viewIndex] = undefined;
+                var visibleCode = this.visibleProgram[exists.funcNo];
+                visibleCode[exists.viewIndex] = undefined;
                 var code = this.editingProgram[pos.funcNo];
                 block.remove(code, this.viewToCodeIndex(exists.viewIndex));
             } else
@@ -620,7 +627,8 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         else if (pos.zone == PROGRAM_ZONE) {
             var code = this.editingProgram[pos.funcNo];
             var visibleCode = this.visibleProgram[pos.funcNo];
-            var action = this.actionIfDrop(code, visibleCode, pos.viewIndex, pos.offset);
+            var action = this.actionIfDrop(code, visibleCode,
+                                           pos.viewIndex, pos.offset);
             if (action == ACTION_INSERT_BEFORE)
                 this.insertBlock(pos.funcNo, pos.viewIndex, block);
             else if (action == ACTION_INSERT_AFTER)
@@ -648,7 +656,8 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     insertBlock: function(funcNo, viewIndex, block) {
         var exists = this.existsBlock(block);
         if(exists) {
-            block.remove(this.editingProgram[exists.funcNo], this.viewToCodeIndex(exists.funcNo, exists.viewIndex));
+            block.remove(this.editingProgram[exists.funcNo],
+                         this.viewToCodeIndex(exists.funcNo, exists.viewIndex));
             this.addChild(block);
             this.visibleProgram[exists.funcNo][exists.viewIndex] = undefined;
         }
@@ -681,7 +690,8 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         for (var i = codeIndex; i < blankIndex; i++) {
             var slideBlock = code[i];
             var viewIndexForSlideBlock = this.codeToViewIndex(funcNo, i + 1);
-            y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * viewIndexForSlideBlock;
+            y = this.EDITOR_PROGRAM_TOP
+                + this.BLOCK_SIZE * viewIndexForSlideBlock;
             slideBlock.put(x, y, newCode, i + 1);
             if (viewIndexForSlideBlock > this.CODE_LEN - 1) // out of visible range
                 this.removeChild(slideBlock);
