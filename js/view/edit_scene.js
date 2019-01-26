@@ -439,10 +439,10 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     },
 
     existsBlock: function(block) {
-      if (block.mode == MODE_FROM_PROGRAM || block.mode == MODE_IN_PROGRAM)
-          return true;
-      else
-          return false;
+        if (block.mode == MODE_FROM_PROGRAM || block.mode == MODE_IN_PROGRAM)
+            return true;
+        else
+            return false;
     },
 
     getFuncNo: function(block) {
@@ -631,7 +631,6 @@ var EditScene = enchant.Class.create(enchant.Scene, {
             var visibleCode = this.visibleProgram[pos.funcNo];
             var action = this.actionIfDrop(code, visibleCode,
                                            pos.viewIndex, pos.offset);
-            console.log(action);
             if (action == ACTION_INSERT_BEFORE)
                 this.insertBlock(pos.funcNo, pos.viewIndex, block);
             else if (action == ACTION_INSERT_AFTER)
@@ -685,8 +684,6 @@ var EditScene = enchant.Class.create(enchant.Scene, {
 
         /* remove from visibleProgram */
         this.removeBlockFromVisibleProgram(block);
-        console.log(this.editingProgram[funcNo]);
-        console.log(this.visibleProgram[funcNo]);
 
         /* make newCode */
         var newCode = [];
@@ -700,7 +697,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
               newCode[i] = undefined;
         }
 
-        for (var i = codeIndex; i < blankIndex; i++) {
+        for (var i = codeIndex; i < blankIndex; i++) {  // i = codeIndex
             var slideBlock = code[i];
             var viewIndexForSlideBlock = this.codeToViewIndex(funcNo, i + 1);
             var x = this.EDITOR_X +
@@ -712,7 +709,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
                 this.removeChild(slideBlock);
         }
 
-        for (var i = blankIndex + 1; i < code.length; i++) {
+        for (var i = blankIndex + 1; i < code.length; i++) {  // i = codeIndex
             if (code[i]) {
                 x = code[i].positionInProgram.x;
                 y = code[i].positionInProgram.y;
@@ -727,7 +724,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         block.put(x, y, newCode, codeIndex);
 
         /* remake code */
-        for (var i = 0; i < newCode.length; i++) {
+        for (var i = 0; i < newCode.length; i++) {  // i = codeIndex
             if (newCode[i]) {
                 var x = newCode[i].positionInProgram.x;
                 var y = newCode[i].positionInProgram.y;
@@ -740,7 +737,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         }
 
         /* remake visibleCode */
-        for (var i = 0; i < this.CODE_LEN; i++) {
+        for (var i = 0; i < this.CODE_LEN; i++) {  // i = viewIndex
             var codeIndex = this.viewToCodeIndex(funcNo, i);
             console.log(i + " <- " + codeIndex);
             this.visibleProgram[funcNo][i] = code[codeIndex];
