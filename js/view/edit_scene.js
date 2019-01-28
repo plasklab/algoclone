@@ -110,15 +110,13 @@ var EditorBlock = enchant.Class.create(enchant.Group, {
         }
     },
 
-    remove: function(code, index) {
+    remove: function() {
         if (this.mode == MODE_IN_PROGRAM || this.mode == MODE_FROM_PROGRAM) {
             var curCode = this.positionInProgram.code;
             var curIndex = this.positionInProgram.index;
             curCode[curIndex] = undefined;
         }
 
-        if (index)
-            code[index] = undefined;
         this.scene.removeChild(this);
     },
 
@@ -457,77 +455,88 @@ var EditScene = enchant.Class.create(enchant.Scene, {
     },
 
     codeToViewIndex: function(funcNo, codeIndex) {
-      return codeIndex - this.visibleTop[funcNo];
+        return codeIndex - this.visibleTop[funcNo];
     },
 
     viewToCodeIndex: function(funcNo, viewIndex) {
-      return viewIndex + this.visibleTop[funcNo];
+        return viewIndex + this.visibleTop[funcNo];
     },
 
     existsBlock: function(block) {
-      for (var i = 0; i < this.FUNC_SYMBOL.length; i++) {
-          var visibleCode = this.visibleProgram[i];
-          for (var j = 0; j < this.CODE_LEN - 1; j++) {
-            if (visibleCode[j] && visibleCode[j] === block) {
-                return {funcNo: i, viewIndex: j};
-            }
-          }
-      }
-      return undefined;
+        if (block.mode == MODE_FROM_PROGRAM || block.mode == MODE_IN_PROGRAM)
+            return true;
+        else
+            return false;
+    },
+
+    getFuncNo: function(block) {
+        if (block.mode == MODE_FROM_PROGRAM || block.mode == MODE_IN_PROGRAM) {
+            var code = block.positionInProgram.code;
+            for (var i = 0; i < this.editingProgram.length; i++)
+                if (code === this.editingProgram[i])
+                    return i;
+        }
+        return undefined;
     },
 
     scrollUp: function(funcNo) {
-      var code = this.editingProgram[funcNo];
-      var visibleCode = this.visibleProgram[funcNo];
-      if (this.visibleTop[funcNo] <= 0) {
-          return;
-      }
+        var code = this.editingProgram[funcNo];
+        var visibleCode = this.visibleProgram[funcNo];
+        if (this.visibleTop[funcNo] <= 0) {
+            return;
+        }
 
-      if (code[this.visibleTop[funcNo] - 1])
-          this.addChild(code[this.visibleTop[funcNo] - 1]);
-      if (code[this.visibleBottom[funcNo]])
-          this.removeChild(code[this.visibleBottom[funcNo]]);
+        if (code[this.visibleTop[funcNo] - 1])
+            this.addChild(code[this.visibleTop[funcNo] - 1]);
+        if (code[this.visibleBottom[funcNo]])
+            this.removeChild(code[this.visibleBottom[funcNo]]);
 
-      this.visibleTop[funcNo]--;
-      this.visibleBottom[funcNo]--;
+        this.visibleTop[funcNo]--;
+        this.visibleBottom[funcNo]--;
 
-      var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
-      for (var i = 0; i < this.CODE_LEN; i++) { // i is viewIndex
-          var codeIndex = this.viewToCodeIndex(funcNo, i);
-          var slideBlock = code[codeIndex];
-          if (slideBlock) {
-              var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * i;
-              slideBlock.put(x, y, code, codeIndex);
-              visibleCode[i] = slideBlock;
-          }
-      }
+        var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
+        for (var i = 0; i < this.CODE_LEN; i++) { // i is viewIndex
+            var codeIndex = this.viewToCodeIndex(funcNo, i);
+            var slideBlock = code[codeIndex];
+            if (slideBlock) {
+                var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * i;
+                slideBlock.put(x, y, code, codeIndex);
+                visibleCode[i] = slideBlock;
+            } else {
+                code[codeIndex] = undefined;
+                visibleCode[i] = undefined;
+            }
+        }
     },
 
     scrollDown: function(funcNo) {
-      var code = this.editingProgram[funcNo];
-      var visibleCode = this.visibleProgram[funcNo];
-      if (this.visibleBottom[funcNo] >= code.length - 1) {
-          return;
-      }
+        var code = this.editingProgram[funcNo];
+        var visibleCode = this.visibleProgram[funcNo];
+        if (this.visibleBottom[funcNo] >= code.length - 1) {
+            return;
+        }
 
-      if (code[this.visibleTop[funcNo]])
-          this.removeChild(code[this.visibleTop[funcNo]]);
-      if (code[this.visibleBottom[funcNo] + 1])
-          this.addChild(code[this.visibleBottom[funcNo] + 1]);
+        if (code[this.visibleTop[funcNo]])
+            this.removeChild(code[this.visibleTop[funcNo]]);
+        if (code[this.visibleBottom[funcNo] + 1])
+            this.addChild(code[this.visibleBottom[funcNo] + 1]);
 
-      this.visibleTop[funcNo]++;
-      this.visibleBottom[funcNo]++;
+        this.visibleTop[funcNo]++;
+        this.visibleBottom[funcNo]++;
 
-      var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
-      for (var i = 0; i < this.CODE_LEN; i++) { // i is viewIndex
-          var codeIndex = this.viewToCodeIndex(funcNo, i);
-          var slideBlock = code[codeIndex];
-          if (slideBlock) {
-              var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * i;
-              slideBlock.put(x, y, code, codeIndex);
-              visibleCode[i] = slideBlock;
-          }
-      }
+        var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
+        for (var i = 0; i < this.CODE_LEN; i++) { // i is viewIndex
+            var codeIndex = this.viewToCodeIndex(funcNo, i);
+            var slideBlock = code[codeIndex];
+            if (slideBlock) {
+                var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * i;
+                slideBlock.put(x, y, code, codeIndex);
+                visibleCode[i] = slideBlock;
+            } else {
+                code[codeIndex] = undefined;
+                visibleCode[i] = undefined;
+            }
+        }
     },
 
     getPositionByLocation: function(x,y) {
@@ -614,6 +623,7 @@ var EditScene = enchant.Class.create(enchant.Scene, {
             var visibleCode = this.visibleProgram[pos.funcNo];
             var action = this.actionIfDrop(code, visibleCode,
                                            pos.viewIndex, pos.offset);
+                                           console.log(action);
             if (action == ACTION_INSERT_BEFORE) {
                 var y = (this.EDITOR_PROGRAM_TOP
                          + this.BLOCK_SIZE * (pos.viewIndex - 1)
@@ -638,16 +648,8 @@ var EditScene = enchant.Class.create(enchant.Scene, {
         var pos = this.getPositionByLocation(x, y);
         if (pos.zone == undefined)
             block.undoMoving();
-        else if (pos.zone == PALETTE_ZONE) {
-            var exists = this.existsBlock(block);
-            if(exists) {
-                var visibleCode = this.visibleProgram[exists.funcNo];
-                visibleCode[exists.viewIndex] = undefined;
-                var code = this.editingProgram[pos.funcNo];
-                block.remove(code, this.viewToCodeIndex(exists.viewIndex));
-            } else
-              block.remove(undefined, undefined);
-        }
+        else if (pos.zone == PALETTE_ZONE)
+            this.removeBlock(block);
         else if (pos.zone == PROGRAM_ZONE) {
             var code = this.editingProgram[pos.funcNo];
             var visibleCode = this.visibleProgram[pos.funcNo];
@@ -665,78 +667,104 @@ var EditScene = enchant.Class.create(enchant.Scene, {
             block.undoMoving();
     },
 
+    removeBlock: function(block) {
+        this.removeBlockFromVisibleProgram(block);
+        block.remove();
+    },
+
+    removeBlockFromVisibleProgram: function(block) {
+        if (this.existsBlock(block)) {
+            var prevFuncNo = this.getFuncNo(block);
+            var prevViewIndex = this.codeToViewIndex(prevFuncNo,
+                                    block.positionInProgram.index);
+            this.visibleProgram[prevFuncNo][prevViewIndex] = undefined;
+        }
+    },
+
     putBlock: function(funcNo, viewIndex, block) {
         var code = this.editingProgram[funcNo];
         var visibleCode = this.visibleProgram[funcNo];
         var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
         var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * viewIndex;
-        var exists = this.existsBlock(block);
-        if(exists)
-            this.visibleProgram[exists.funcNo][exists.viewIndex] = undefined;
+        this.removeBlockFromVisibleProgram(block);
         block.put(x, y, code, this.viewToCodeIndex(funcNo, viewIndex));
         visibleCode[viewIndex] = block;
     },
 
     insertBlock: function(funcNo, viewIndex, block) {
-        var exists = this.existsBlock(block);
-        if(exists) {
-            block.remove(this.editingProgram[exists.funcNo],
-                         this.viewToCodeIndex(exists.funcNo, exists.viewIndex));
-            this.addChild(block);
-            this.visibleProgram[exists.funcNo][exists.viewIndex] = undefined;
-        }
-
         var code = this.editingProgram[funcNo];
-        var visibleCode = this.visibleProgram[funcNo];
-        var newCode = [];
 
-        // There should be at least one blank because insertBlock
-        // is called only if actionIfDrop made decision of insert.
-        // It is a little time ago.
+        /* find blank" */
         var codeIndex = this.viewToCodeIndex(funcNo, viewIndex);
+        var prevCodeIndex = undefined;
+        if (this.getFuncNo(block) == funcNo)
+            prevCodeIndex = block.positionInProgram.index;
+
         var blankIndex = codeIndex;
-        while (code[blankIndex]) {
+        while (!(code[blankIndex] == undefined || prevCodeIndex == blankIndex ||
+                 blankIndex >= code.length)) {
             blankIndex++;
-            if (blankIndex >= code.length) {
-              code[code.length] = undefined;
-            }
         }
 
-        for (var i = 0; i < codeIndex; i++) {
-            if (code[i])
-                code[i].put(code[i].x, code[i].y, newCode, i);
+        /* remove from visibleProgram */
+        this.removeBlockFromVisibleProgram(block);
+
+        /* make newCode */
+        var newCode = [];
+        for (var i = 0; i < codeIndex; i++) { // i = codeIndex
+            if (code[i]) {
+                var x = code[i].positionInProgram.x;
+                var y = code[i].positionInProgram.y;
+                code[i].put(x, y, newCode, i);
+            }
+            else
+              newCode[i] = undefined;
+        }
+
+        for (var i = codeIndex; i < blankIndex; i++) {  // i = codeIndex
+            var slideBlock = code[i];
+            var viewIndexForSlideBlock = this.codeToViewIndex(funcNo, i + 1);
+            var x = this.EDITOR_X +
+                    (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
+            var y = this.EDITOR_PROGRAM_TOP
+                    + this.BLOCK_SIZE * viewIndexForSlideBlock;
+            slideBlock.put(x, y, newCode, i + 1);
+            if (viewIndexForSlideBlock > this.CODE_LEN - 1) // out of visible range
+                this.removeChild(slideBlock);
+        }
+
+        for (var i = blankIndex + 1; i < code.length; i++) {  // i = codeIndex
+            if (code[i]) {
+                x = code[i].positionInProgram.x;
+                y = code[i].positionInProgram.y;
+                code[i].put(x, y, newCode, i);
+            }
+            else
+              newCode[i] = undefined;
         }
 
         var x = this.EDITOR_X + (this.BLOCK_SIZE + this.EDITOR_MARGIN) * funcNo;
         var y = this.EDITOR_PROGRAM_TOP + this.BLOCK_SIZE * viewIndex;
         block.put(x, y, newCode, codeIndex);
 
-        for (var i = codeIndex; i < blankIndex; i++) {
-            var slideBlock = code[i];
-            var viewIndexForSlideBlock = this.codeToViewIndex(funcNo, i + 1);
-            y = this.EDITOR_PROGRAM_TOP
-                + this.BLOCK_SIZE * viewIndexForSlideBlock;
-            slideBlock.put(x, y, newCode, i + 1);
-            if (viewIndexForSlideBlock > this.CODE_LEN - 1) // out of visible range
-                this.removeChild(slideBlock);
-        }
-
-        for (var i = blankIndex + 1; i < code.length; i++) {
-            if(code[i])
-                code[i].put(code[i].x, code[i].y, newCode, i);
+        /* remake code */
+        for (var i = 0; i < newCode.length; i++) {  // i = codeIndex
+            if (newCode[i]) {
+                var x = newCode[i].positionInProgram.x;
+                var y = newCode[i].positionInProgram.y;
+                console.log("x : " + x);
+                console.log("y : "  + y);
+                newCode[i].put(x, y, code, i);
+            }
             else
-              newCode.push(undefined);
+              code[i] = undefined;
         }
 
-        for (var i = 0; i < code.length; i++) {
-          if (newCode[i])
-            newCode[i].put(newCode[i].x, newCode[i].y, code, i);
-          else
-            code[i] = undefined;
-        }
-
-        for (var i = 0; i < this.CODE_LEN; i++) {
-            visibleCode[i] = code[this.viewToCodeIndex(funcNo, i)];
+        /* remake visibleCode */
+        for (var i = 0; i < this.CODE_LEN; i++) {  // i = viewIndex
+            var codeIndex = this.viewToCodeIndex(funcNo, i);
+            console.log(i + " <- " + codeIndex);
+            this.visibleProgram[funcNo][i] = code[codeIndex];
         }
     },
 
